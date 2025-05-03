@@ -338,3 +338,66 @@ def test_rpow_gradient():
 
     # Expected gradient: 2^3 * ln(2) ≈ 8 * 0.693 ≈ 5.545
     assert a.grad == pytest.approx((2 ** 3) * math.log(2))
+
+
+def test_detach_returns_new_object():
+    """Test that detach() returns a new object with same value"""
+    original = Float32(5.0, requires_grad=True)
+    detached = original.detach()
+
+    assert detached.item() == original.item()
+    assert detached is not original  # Must be a new object
+
+
+def test_detach_breaks_gradient_connection():
+    """Test that detach() breaks gradient computation chain"""
+    a = Float32(2.0, requires_grad=True)
+    b = a.detach()  # Detached copy
+    c = Float32(3.0, requires_grad=True)
+    result = b * c  # Operation with detached tensor
+
+    result.backward()
+
+    # Verify gradients
+    assert c.grad == pytest.approx(2.0)  # dc = b = 2.0
+    assert a.grad is None  # Detached tensor shouldn't affect original
+
+
+def test_detach_with_computational_graph():
+    """Test detach() in middle of computational graph"""
+    a = Float32(2.0, requires_grad=True)
+    b = Float32(3.0, requires_grad=True)
+    c = a * b
+    d = c.detach()  # Detach here
+    e = d * Float32(4.0, requires_grad=True)
+
+    e.backward()
+
+    assert e.grad is None
+    assert c.grad is None
+    assert b.grad is None  # Detached before reaching b
+    assert a.grad is None  # Detached before reaching a
+    assert e.item() == pytest.approx(24.0)  # 2*3*4=24
+
+
+def test_detach_then_reattach():
+    """Test that detached tensor can be reattached to graph"""
+    a = Float32(2.0, requires_grad=True)
+    b = a.detach()
+    c = Float32(b.item(), requires_grad=True)  # Reattach
+
+    result = c * 3.0
+    result.backward()
+
+    assert c.grad == pytest.approx(3.0)
+    assert a.grad is None  # Original remains unaffected
+
+
+def test_detach_multiple_calls():
+    """Test multiple detach() calls don't affect behavior"""
+    a = Float32(3.0, requires_grad=True)
+    b = a.detach().detach().detach()
+
+    assert b.item() == pytest.approx(3.0)
+    assert b is not a.detach()  # Each detach creates new object
+

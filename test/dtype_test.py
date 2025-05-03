@@ -6,7 +6,11 @@ TEST_VALUES = [(10 ** 6, 32131), (21, 236), (8971, 42)]
 
 
 def test_init() -> None:
+    """
+    Test-s initialization of dtypes.
+    """
     test_class = Float32(1)
+
 
 @pytest.mark.parametrize(
     "x_1,x_2", TEST_VALUES
@@ -114,6 +118,7 @@ def test_negation_operation() -> None:
     b = -a  # Calls __neg__
     assert isinstance(b, Float32)
     assert b.item() == -5.0
+
 
 @pytest.mark.parametrize("base,exp,expected", [
     (2.0, 3.0, 8.0),  # 2^3 = 8

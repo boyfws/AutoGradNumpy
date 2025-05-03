@@ -1,6 +1,14 @@
+from typing import Callable
+
+
 def truediv_backward(
-        num, den, result
-):
+        num: float,
+        den: float,
+        result: float
+) -> tuple[
+    Callable[[], float],
+    Callable[[], float]
+]:
     def num_fn():
         return 1 / den
 

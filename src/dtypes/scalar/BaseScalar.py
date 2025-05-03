@@ -1,12 +1,6 @@
 import numpy as np
 from typing import Union, Callable, Optional
-from src.backward import (
-    add_backward,
-    sub_backward,
-    mul_backward,
-    truediv_backward,
-    power_backward
-)
+from src.backward import *
 
 
 class BaseScalar:
@@ -14,7 +8,15 @@ class BaseScalar:
     prev_1: Optional["BaseScalar"]
     prev_2: Optional["BaseScalar"]
     grad: Optional[float]
-    grad_fn: Optional[Callable]
+    grad_fn: Optional[
+        Callable[
+            [float, float, float],
+            tuple[
+                Callable[[], float],
+                Callable[[], float]
+            ]
+        ]
+    ]
 
     def __init__(
             self,
@@ -60,11 +62,16 @@ class BaseScalar:
         if self.grad is not None:
             self.grad = 0
 
-    def backward(self):
+    def backward(self) -> None:
         self._backward(1)
 
-    def detach(self):
-        pass
+    def detach(self) -> "BaseScalar":
+        result_obj = object.__new__(type(self))
+        result_obj.__init__(
+            self.value,
+            requires_grad=self.requires_grad
+        )
+        return result_obj
 
     def _base_operations_wrapper(
             self,
