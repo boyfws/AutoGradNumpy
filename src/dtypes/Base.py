@@ -9,8 +9,12 @@ class BaseArray:
 
 class BaseScalar:
     _dtype: np.float16 | np.float32 | np.float64
-    prev_1: Optional["BaseScalar"]
-    prev_2: Optional["BaseScalar"]
+    prev_1: Optional[
+        Union["BaseScalar", "BaseArray"]
+    ]
+    prev_2: Optional[
+        Union["BaseScalar", "BaseArray"]
+    ]
     grad: Optional[float]
     grad_fn: Optional[
         Callable[
@@ -34,6 +38,16 @@ class BaseScalar:
         self.prev_2 = None
         self.grad = None
         self.grad_fn = None
+
+    def _array_trigger(self,
+                       other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
+                       ) -> None:
+        if isinstance(other, BaseArray):
+            raise NotImplementedError
 
     def __str__(self) -> str:
         return str(self.value)
@@ -79,10 +93,15 @@ class BaseScalar:
 
     def _base_operations_wrapper(
             self,
-            other: Union["BaseScalar", float],
+            other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ],
             fn_getter: Callable,
             operation_name: str
     ):
+        self._array_trigger(other)
         flag = isinstance(other, BaseScalar)
         requires_grad = False
         if flag:
@@ -118,7 +137,11 @@ class BaseScalar:
         return result_obj
 
     def __add__(self,
-                other: Union["BaseScalar", float]
+                other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
                 ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
@@ -128,7 +151,12 @@ class BaseScalar:
     def __radd__(self, other: float) -> "BaseScalar":
         return self.__add__(other)
 
-    def __sub__(self, other: Union["BaseScalar", float]) -> "BaseScalar":
+    def __sub__(self, other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
+                ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
             sub_backward,
@@ -139,7 +167,11 @@ class BaseScalar:
         return self.__neg__() + other
 
     def __mul__(self,
-                other: Union["BaseScalar", float]
+                other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
                 ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
@@ -152,14 +184,21 @@ class BaseScalar:
         return self.__mul__(other)
 
     def __truediv__(self,
-                    other: Union["BaseScalar", float]):
+                    other: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
+                    ):
         return self._base_operations_wrapper(
             other,
             truediv_backward,
             "__truediv__"
         )
 
-    def __rtruediv__(self, other) -> "BaseScalar":
+    def __rtruediv__(self,
+                     other: float
+                     ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
             lambda a, b, c: truediv_backward(b, a, c)[::-1],
@@ -168,7 +207,11 @@ class BaseScalar:
 
     def __pow__(
             self,
-            power: Union["BaseScalar", float]
+            power: Union[
+                           float,
+                           "BaseScalar",
+                           "BaseArray"
+                       ]
     ) -> "BaseScalar":
         return self._base_operations_wrapper(
             power,
@@ -176,14 +219,18 @@ class BaseScalar:
             "__pow__"
         )
 
-    def __rpow__(self, other) -> "BaseScalar":
+    def __rpow__(self,
+                 other: float
+                 ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
             lambda a, b, c: power_backward(b, a, c)[::-1],
             "__rpow__"
         )
 
-    def __eq__(self, other: Union["BaseScalar", float]) -> bool:
+    def __eq__(self,
+               other: Union["BaseScalar", float]
+               ) -> bool:
         if isinstance(other, BaseScalar):
             return self.value == other.value
         else:

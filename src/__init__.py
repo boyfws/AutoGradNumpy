@@ -1,1 +1,1 @@
-from .dtypes import Float32
+from .dtypes import Float16, Float32, Float64, Array
