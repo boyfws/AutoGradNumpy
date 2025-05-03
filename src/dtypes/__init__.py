@@ -1,1 +1,1 @@
-from .scalar import Float32
+from .scalar import Float16, Float32, Float64
