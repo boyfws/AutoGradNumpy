@@ -1,4 +1,4 @@
-from .BaseScalar import BaseScalar
+from src.dtypes.Base import BaseScalar
 import numpy as np
 
 

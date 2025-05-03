@@ -1,6 +1,10 @@
 import numpy as np
 from typing import Union, Callable, Optional
-from src.backward import *
+from src.backward.scalar import *
+
+
+class BaseArray:
+    pass
 
 
 class BaseScalar:
