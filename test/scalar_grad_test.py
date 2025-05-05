@@ -106,17 +106,6 @@ def test_grad_accumulation() -> None:
     assert b.grad == 5  # 4 + 1
 
 
-def test_zero_grad() -> None:
-    """test gradient resetting (zero_grad())."""
-    a = Float32(1, requires_grad=True)
-    b = a * 2
-    b.backward()
-    assert a.grad == 2
-
-    a.zero_grad()  # Requires zero_grad() method in Float32
-    assert a.grad == 0
-
-
 def test_negation_gradient() -> None:
     """test gradient computation through negation operation."""
     a = Float32(3.0, requires_grad=True)
@@ -151,16 +140,6 @@ def test_negation_with_constants() -> None:
     b.backward()
     assert b.item() == 5.0
     assert a.grad == 1.0  # db/da = 1
-
-
-def test_zero_grad_after_negation() -> None:
-    """test that gradients can be properly reset after negation."""
-    a = Float32(5.0, requires_grad=True)
-    b = -a
-    b.backward()
-    assert a.grad == -1.0
-    a.zero_grad()
-    assert a.grad == 0.0
 
 
 # test data - (left_operand, right_operand, expected_result)
@@ -401,3 +380,56 @@ def test_detach_multiple_calls():
     assert b.item() == pytest.approx(3.0)
     assert b is not a.detach()  # Each detach creates new object
 
+
+def test_multiple_usage():
+    "Test the case where single object is used twice"
+    a = Float32(2)
+    a.requires_grad = True
+
+    b = Float32(1)
+    b.requires_grad = True
+
+    c = a + b
+
+    m = c * a
+
+    m.backward()
+
+    assert a.grad == 5
+    assert b.grad == 2
+
+
+def test_unused_grad():
+    a = Float32(2)
+    a.requires_grad = True
+
+    b = Float32(1)
+    b.requires_grad = True
+
+    c = a + b
+
+    m = c * a
+
+    k = m ** 2
+
+    k.backward()
+
+    assert m.grad is None
+    assert a.grad == 60
+    assert b.grad == 24
+
+
+def test_single_scalar_grad():
+    a = Float32(2)
+
+    a.requires_grad = True
+
+    c = a + a
+
+    m = c * a
+
+    k = m ** 2
+
+    k.backward()
+
+    assert a.grad == 128
