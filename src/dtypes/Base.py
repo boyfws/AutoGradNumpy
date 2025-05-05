@@ -1,15 +1,49 @@
 import numpy as np
-from typing import Union, Callable, Optional
+
+import abc
+from typing import Union, Callable, Optional, Type
 from src.backward.scalar import *
 from src.dtypes._EmptyCallable import _EmptyCallable
 
 
-class BaseArray:
-    pass
+class BaseArray(abc.ABC):
+    _ret_scalar_dtype: Type["BaseScalar"]
+    _dtype: Union[np.float16, np.float32, np.float64]
+    prev_1: Optional[
+        Union["BaseScalar", "BaseArray"]
+    ]
+    prev_2: Optional[
+        Union["BaseScalar", "BaseArray"]
+    ]
+
+    grad: Optional[np.ndarray]
+    grad_fn: ...
+
+    def item(self) -> np.ndarray:
+        pass
+
+    def _zero_grad(self) -> None:
+        pass
+
+    def _backward(
+            self,
+            prev_grad: np.ndarray
+    ) -> None:
+        pass
+
+    def _graph_clean_up(self):
+        pass
+
+    def detach(self) -> "BaseArray":
+        pass
 
 
 class BaseScalar:
-    _dtype: np.float16 | np.float32 | np.float64
+    _dtype: Union[
+        np.float16,
+        np.float32,
+        np.float64
+    ]
     prev_1: Optional[
         Union["BaseScalar", "BaseArray"]
     ]
@@ -53,7 +87,11 @@ class BaseScalar:
     def __str__(self) -> str:
         return str(self.value)
 
-    def item(self) -> float:
+    def item(self) -> Union[
+        np.float16,
+        np.float32,
+        np.float64
+    ]:
         return self.value
 
     def _zero_grad(self) -> None:
@@ -110,7 +148,7 @@ class BaseScalar:
         result_obj = object.__new__(type(self))
         result_obj.__init__(
             self.value,
-            requires_grad=self.requires_grad
+            requires_grad=False
         )
         return result_obj
 
@@ -123,17 +161,18 @@ class BaseScalar:
                        ],
             fn_getter: Callable,
             operation_name: str
-    ):
+    ) -> "BaseScalar":
         self._array_trigger(other)
         flag = isinstance(other, BaseScalar)
+        value = self.item()
 
         if flag:
             sec = other.value
         else:
             sec = other
 
-        result = self.value.__getattribute__(operation_name)(sec)
-        fn = fn_getter(self.value, sec, result)
+        result = value.__getattribute__(operation_name)(sec)
+        fn = fn_getter(value, sec, result)
 
         result_obj = object.__new__(type(self))
         result_obj.__init__(
@@ -152,7 +191,7 @@ class BaseScalar:
         result_obj = object.__new__(type(self))
         result_obj.__init__(
             -self.value,
-            requires_grad=self.requires_grad
+            requires_grad=False
         )
         result_obj.grad_fn = neg_backward()
         result_obj.prev_1 = self
@@ -230,14 +269,14 @@ class BaseScalar:
 
     def __pow__(
             self,
-            power: Union[
+            other: Union[
                            float,
                            "BaseScalar",
                            "BaseArray"
                        ]
     ) -> "BaseScalar":
         return self._base_operations_wrapper(
-            power,
+            other,
             power_backward,
             "__pow__"
         )
@@ -258,6 +297,3 @@ class BaseScalar:
             return self.value == other.value
         else:
             return self.value == other
-
-
-
