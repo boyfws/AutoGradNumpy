@@ -1,5 +1,5 @@
 import pytest
-from src.dtypes import Float32
+from src import Float32
 import math
 
 TEST_VALUES = [(10 ** 6, 32131), (21, 236), (8971, 42)]

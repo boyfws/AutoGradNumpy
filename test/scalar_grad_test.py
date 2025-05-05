@@ -1,5 +1,5 @@
 import pytest
-from src.dtypes import Float32
+from src import Float32
 import math
 
 # test values (integers for precision)
