@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Union, Callable, Optional
 from src.backward.scalar import *
+from src.dtypes._EmptyCallable import _EmptyCallable
 
 
 class BaseArray:
@@ -59,9 +60,21 @@ class BaseScalar:
         if self.grad is not None:
             self.grad = 0
 
+    def _graph_clean_up(self) -> None:
+        if self.grad_fn is not None:
+            self.grad_fn = _EmptyCallable()
+
+        if self.prev_1 is not None:
+            self.prev_1._graph_clean_up()
+            self.prev_1 = None
+
+        if self.prev_2 is not None:
+            self.prev_2._graph_clean_up()
+            self.prev_2 = None
+
     def _backward(
             self,
-            prev_grad: float
+            prev_grad: float,
     ) -> None:
         if self.requires_grad:
             if self.grad is None:
@@ -70,6 +83,10 @@ class BaseScalar:
                 self.grad += prev_grad
 
         if self.grad_fn is not None:
+
+            if isinstance(self.grad_fn, _EmptyCallable):
+                raise RuntimeError("The computational graph was cleaned up after the backward")
+
             grad1, grad2 = self.grad_fn()
 
             if grad1 is not None and self.prev_1 is not None:
@@ -80,8 +97,14 @@ class BaseScalar:
                 full_grad2 = grad2 * prev_grad
                 self.prev_2._backward(full_grad2)
 
-    def backward(self) -> None:
+    def backward(
+            self,
+            retain_graph: bool = False
+    ) -> None:
         self._backward(1)
+
+        if not retain_graph:
+            self._graph_clean_up()
 
     def detach(self) -> "BaseScalar":
         result_obj = object.__new__(type(self))

@@ -433,3 +433,55 @@ def test_single_scalar_grad():
     k.backward()
 
     assert a.grad == 128
+
+
+def test_backward_without_retain_graph():
+    """
+    Test that backward without retain_graph frees the graph and subsequent backward
+    either raises an error or does not accumulate again.
+    """
+    # Simple expression: (a + b)^2
+    a = Float32(2.0, requires_grad=True)
+    b = Float32(3.0, requires_grad=True)
+    c = a + b
+    d = c * c  # d = (a + b)^2
+
+    print(d.grad_fn)
+    d.backward()
+
+    # Second backward without retain_graph
+    with pytest.raises(RuntimeError) as e:
+        d.backward()
+
+    assert str(e.value) == "The computational graph was cleaned up after the backward"
+
+
+def test_backward_with_retain_graph():
+    """
+    Test that backward with retain_graph=True allows multiple backward passes
+    and accumulates gradients correctly.
+    """
+    # Simple expression: a * b
+    a = Float32(4.0, requires_grad=True)
+    b = Float32(5.0, requires_grad=True)
+    c = a * b
+
+    # 1st pass
+    c.backward(retain_graph=True)
+    assert a.grad == pytest.approx(5.0)
+    assert b.grad == pytest.approx(4.0)
+
+    # 2nd pass
+    c.backward(retain_graph=True)
+    assert a.grad == pytest.approx(2 * 5.0)
+    assert b.grad == pytest.approx(2 * 4.0)
+
+    # Final pass without retain_graph
+    c.backward()
+    assert a.grad == pytest.approx(3 * 5.0)
+    assert b.grad == pytest.approx(3 * 4.0)
+
+    with pytest.raises(RuntimeError) as e:
+        c.backward()
+
+    assert str(e.value) == "The computational graph was cleaned up after the backward"
