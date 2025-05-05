@@ -5,16 +5,17 @@ def truediv_backward(
         num: float,
         den: float,
         result: float
-) -> tuple[
-    Callable[[], float],
-    Callable[[], float]
+) -> Callable[
+    [],
+    tuple[
+        float,
+        float
+    ]
 ]:
-    def num_fn():
-        return 1 / den
 
-    def den_fn():
-        return -result / den
+    def fn():
+        return 1 / den, -result / den
 
-    return num_fn, den_fn
+    return fn
 
 

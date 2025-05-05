@@ -5,9 +5,12 @@ def add_backward(
         a: float,
         b: float,
         result: float
-) -> tuple[
-    Callable[[], float], Callable[[], float]
+) -> Callable[
+    [],
+    tuple[
+        float, float
+    ]
 ]:
     def fn():
-        return 1
-    return fn, fn
+        return 1, 1
+    return fn

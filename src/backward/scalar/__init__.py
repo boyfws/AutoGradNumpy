@@ -3,3 +3,4 @@ from .sub import sub_backward
 from .mul import mul_backward
 from .truediv import truediv_backward
 from .power import power_backward
+from .neg import neg_backward

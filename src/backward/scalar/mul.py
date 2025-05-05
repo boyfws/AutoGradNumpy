@@ -5,15 +5,12 @@ def mul_backward(
         a: float,
         b: float,
         result: float
-) -> tuple[
-    Callable[[], float],
-    Callable[[], float]
+) -> Callable[
+    [],
+    tuple[float, float]
 ]:
 
-    def fn_a():
-        return b
+    def fn():
+        return b, a
 
-    def fn_b():
-        return a
-
-    return fn_a, fn_b
+    return fn

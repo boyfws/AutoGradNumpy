@@ -6,17 +6,18 @@ def power_backward(
         val: float,
         power: float,
         calculated: float
-) -> tuple[
-    Callable[[], float],
-    Callable[[], float]
+) -> Callable[
+    [],
+    tuple[float, float]
 ]:
-    def val_fn():
-        if val == 0:
-            return 0
+    if val == 0:
+        val_grad = 0
+    else:
+        val_grad = power * calculated / val
 
-        return power * calculated / val
+    power_grad = calculated * np.log(val)
 
-    def power_fn():
-        return calculated * np.log(val)
+    def fn():
+        return val_grad, power_grad
 
-    return val_fn, power_fn
+    return fn
