@@ -18,10 +18,10 @@ class BaseScalar:
     grad: Optional[float]
     grad_fn: Optional[
         Callable[
-            [float, float, float],
+            [],
             tuple[
-                Callable[[], float],
-                Callable[[], float]
+                Union[float, np.ndarray, None],
+                Union[float, np.ndarray, None],
             ]
         ]
     ]
@@ -55,30 +55,30 @@ class BaseScalar:
     def item(self) -> float:
         return self.value
 
-    def _backward(self, prev_grad: float) -> None:
-        if self.requires_grad:
-            if self.grad_fn is None:
-                grad = 1
-            else:
-                grad = self.grad_fn()
-
-            full_grad = prev_grad * grad
-
-            if self.grad_fn is not None:
-                if self.grad is None:
-                    self.grad = full_grad
-                else:
-                    self.grad += full_grad
-
-            if self.prev_1 is not None:
-                self.prev_1._backward(full_grad)
-
-            if self.prev_2 is not None:
-                self.prev_2._backward(full_grad)
-
-    def zero_grad(self) -> None:
+    def _zero_grad(self) -> None:
         if self.grad is not None:
             self.grad = 0
+
+    def _backward(
+            self,
+            prev_grad: float
+    ) -> None:
+        if self.requires_grad:
+            if self.grad is None:
+                self.grad = prev_grad
+            else:
+                self.grad += prev_grad
+
+        if self.grad_fn is not None:
+            grad1, grad2 = self.grad_fn()
+
+            if grad1 is not None and self.prev_1 is not None:
+                full_grad1 = grad1 * prev_grad
+                self.prev_1._backward(full_grad1)
+
+            if grad2 is not None and self.prev_2 is not None:
+                full_grad2 = grad2 * prev_grad
+                self.prev_2._backward(full_grad2)
 
     def backward(self) -> None:
         self._backward(1)
@@ -103,25 +103,25 @@ class BaseScalar:
     ):
         self._array_trigger(other)
         flag = isinstance(other, BaseScalar)
-        requires_grad = False
+
         if flag:
             sec = other.value
-            requires_grad = other.requires_grad
         else:
             sec = other
+
         result = self.value.__getattribute__(operation_name)(sec)
-        fn_1, fn_2 = fn_getter(self.value, sec, result)
-        self.grad_fn = fn_1
+        fn = fn_getter(self.value, sec, result)
 
         result_obj = object.__new__(type(self))
         result_obj.__init__(
             result,
-            requires_grad=self.requires_grad or requires_grad
+            requires_grad=False
         )
+        result_obj.grad_fn = fn
+
         result_obj.prev_1 = self
         if flag:
             result_obj.prev_2 = other
-            other.grad_fn = fn_2
 
         return result_obj
 
@@ -131,7 +131,7 @@ class BaseScalar:
             -self.value,
             requires_grad=self.requires_grad
         )
-        self.grad_fn = lambda: -1
+        result_obj.grad_fn = neg_backward()
         result_obj.prev_1 = self
 
         return result_obj
@@ -201,7 +201,7 @@ class BaseScalar:
                      ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
-            lambda a, b, c: truediv_backward(b, a, c)[::-1],
+            lambda a, b, c: lambda: truediv_backward(b, a, c)()[::-1],
             "__rtruediv__"
         )
 
@@ -224,7 +224,7 @@ class BaseScalar:
                  ) -> "BaseScalar":
         return self._base_operations_wrapper(
             other,
-            lambda a, b, c: power_backward(b, a, c)[::-1],
+            lambda a, b, c: lambda: power_backward(b, a, c)()[::-1],
             "__rpow__"
         )
 
