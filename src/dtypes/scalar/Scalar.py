@@ -10,12 +10,13 @@ from typing import (
 )
 from src.backward.scalar import *
 from src.dtypes._EmptyCallable import _EmptyCallable
-
 from src.dtypes.Base import BaseScalar, BaseArray
-from src._types import Floatable, NotImplementedType
+from src._types import Floatable, NotImplementedType, GradFnScalar
 
 
 class Scalar(BaseScalar):
+    __array_priority__ = 1000
+
     def __init__(
             self,
             value: Floatable,
@@ -36,7 +37,10 @@ class Scalar(BaseScalar):
             "BaseScalar",
             "BaseArray"
         ]
-    ) -> Union[NotImplementedType, None]:
+    ) -> Union[
+        NotImplementedType,
+        None
+    ]:
         if isinstance(other, BaseArray):
             return NotImplemented
 
@@ -101,6 +105,37 @@ class Scalar(BaseScalar):
                 full_grad2 = grad2 * prev_grad
                 self.prev_2._backward(full_grad2)
 
+    @staticmethod
+    def reverse_dunder(meth_name: str) -> str:
+        if not meth_name.startswith("__") or not meth_name.endswith("__"):
+            raise ValueError
+        inner = meth_name[2:-2]
+        if inner.startswith("r"):
+            return f"__{inner[1:]}__"
+        else:
+            return f"__r{inner}__"
+
+    @staticmethod
+    def _convert_ndarray_to_base_array(array: np.ndarray) -> "BaseArray":
+        from src.dtypes import Array
+
+        if array.dtype == np.float16:
+            dtype = np.float16
+        elif array.dtype == np.float32:
+            dtype = np.float32
+        elif array.dtype == np.float64:
+            dtype = np.float64
+        else:
+            dtype = np.float32
+
+        array = Array(
+            array,
+            dtype=dtype,
+            requires_grad=False
+        )
+
+        return array
+
     def backward(
             self,
             retain_graph: bool = False
@@ -121,20 +156,32 @@ class Scalar(BaseScalar):
     def _base_operations_wrapper(
             self,
             other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray",
-                            np.ndarray,
-                       ],
-            fn_getter: Callable,
+                "BaseScalar",
+                Floatable,
+                np.ndarray,
+                "BaseArray"
+            ],
+            fn_getter: Callable[
+                [Floatable, Floatable, Floatable],
+                GradFnScalar
+            ],
             operation_name: str
-    ) -> "BaseScalar":
+    ) -> Union[
+        "BaseScalar",
+        "BaseArray",
+        NotImplementedType
+    ]:
+        value = self.item()
+
+        if isinstance(other, np.ndarray):
+            array = self._convert_ndarray_to_base_array(other)
+            return array.__getattribute__(self.reverse_dunder(operation_name))(value)
+
         block = self._array_trigger(other)
         if block is not None:
             return block
 
         flag = isinstance(other, BaseScalar)
-        value = self.item()
 
         if flag:
             sec = other.value
@@ -240,23 +287,33 @@ class Scalar(BaseScalar):
     def __pow__(
             self,
             other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-    ) -> "BaseScalar":
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             power_backward,
             "__pow__"
         )
 
-    def __rpow__(self,
-                 other: Union[
-                     Floatable,
-                     np.ndarray
-                 ]
-                 ) -> Union["BaseScalar", "BaseArray"]:
+    def __rpow__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseScalar",
+        "BaseArray"
+    ]:
         return self._base_operations_wrapper(
             other,
             lambda a, b, c: lambda: power_backward(b, a, c)()[::-1],
@@ -264,9 +321,11 @@ class Scalar(BaseScalar):
         )
 
     def __eq__(self,
-               other: Union["BaseScalar", Floatable]
+               other: object
                ) -> bool:
         if isinstance(other, BaseScalar):
             return self.data == other.data
-        else:
+        elif isinstance(other, Floatable):
             return self.data == float(other)
+        else:
+            return False
