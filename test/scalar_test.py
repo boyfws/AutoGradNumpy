@@ -1,6 +1,6 @@
 import pytest
-from src import Float32
-import math
+from src import Float32, Array
+import numpy as np
 
 TEST_VALUES = [(10 ** 6, 32131), (21, 236), (8971, 42)]
 
@@ -153,4 +153,68 @@ def test_pow_edge_cases():
 
     # Mathematical convention (0^0 = 1)
     assert (Float32(0.0) ** 0.0).item() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    "a, b",
+    [
+        (np.array([1, 2, 9]), 3),
+        (np.array(
+            [
+                [1, 9, 4],
+                [3, 8, 1],
+                [2, 2, 4]
+            ]
+        ), 2)
+    ]
+)
+def test_scalar_and_ndarray(a, b):
+    b_float = Float32(b)
+
+    add = b_float + a
+    radd = a + b_float
+
+    sub = b_float - a
+    rsub = a - b_float
+
+    mul = b_float * a
+    rmul = a * b_float
+
+    div = b_float / a
+    rdiv = a / b_float
+
+    pow_ = b_float ** a
+    rpow = a ** b_float
+
+    for el in (
+        add,
+        radd,
+        sub,
+        rsub,
+        mul,
+        rmul,
+        div,
+        rdiv,
+        pow_,
+        rpow
+    ):
+        assert isinstance(el, Array)
+
+    assert np.allclose(add.data, a + b)
+    assert np.allclose(radd.data, add.data)
+
+    assert np.allclose(sub.data, b - a)
+    assert np.allclose(rsub.data, a - b)
+
+    assert np.allclose(mul.data, b * a)
+    assert np.allclose(rmul.data, mul.data)
+
+    assert np.allclose(div.data, b / a)
+    assert np.allclose(rdiv.data, a / b)
+
+    assert np.allclose(pow_.data, b ** a)
+    assert np.allclose(rpow.data, a ** b)
+
+
+
 
