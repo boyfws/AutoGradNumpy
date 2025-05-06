@@ -1,18 +1,22 @@
 from typing import (
-    SupportsFloat,
     Union,
-    Callable
+    Callable,
+    TypeAlias
 )
 import numpy as np
 
-Floatable = Union[SupportsFloat, np.generic]
+Floatable = Union[
+    int,
+    float,
+    np.generic
+]
 
 GradFnScalar = Callable[
             [],
             tuple[
-                Union[float, np.ndarray, None],
-                Union[float, np.ndarray, None],
+                Union[Floatable, np.ndarray, None],
+                Union[Floatable, np.ndarray, None],
             ]
         ]
 
-NotImplementedType = type(NotImplemented)
+NotImplementedType: TypeAlias = type(NotImplemented)
