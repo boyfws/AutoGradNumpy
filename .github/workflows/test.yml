@@ -31,7 +31,7 @@ jobs:
                       ruff black isort pyright mypy pytest -q
 
       - name: Run ruff
-        run: ruff check . --exit-one
+        run: ruff check . --exit-non-zero-on-fix
 
       - name: Run isort
         run: isort . --check-only
