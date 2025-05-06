@@ -1,12 +1,9 @@
 import numpy as np
+import numpy.typing as npt
 
-import abc
 from typing import (
     Union,
     Callable,
-    Optional,
-    Type,
-    overload
 )
 from src.backward.scalar import *
 from src.dtypes._EmptyCallable import _EmptyCallable
@@ -33,7 +30,7 @@ class Scalar(BaseScalar):
     @staticmethod
     def _array_trigger(other: Union[
             Floatable,
-            np.ndarray,
+            npt.NDArray,
             "BaseScalar",
             "BaseArray"
         ]
@@ -86,9 +83,9 @@ class Scalar(BaseScalar):
     ) -> None:
         if self.requires_grad:
             if self.grad is None:
-                self.grad = prev_grad
+                self.grad = prev_grad  # type: ignore[operator]
             else:
-                self.grad += prev_grad
+                self.grad += prev_grad # type: ignore[operator]
 
         if self.grad_fn is not None:
 
@@ -98,11 +95,11 @@ class Scalar(BaseScalar):
             grad1, grad2 = self.grad_fn()
 
             if grad1 is not None and self.prev_1 is not None:
-                full_grad1 = grad1 * prev_grad
+                full_grad1 = grad1 * prev_grad # type: ignore[operator]
                 self.prev_1._backward(full_grad1)
 
             if grad2 is not None and self.prev_2 is not None:
-                full_grad2 = grad2 * prev_grad
+                full_grad2 = grad2 * prev_grad # type: ignore[operator]
                 self.prev_2._backward(full_grad2)
 
     @staticmethod
@@ -116,7 +113,7 @@ class Scalar(BaseScalar):
             return f"__r{inner}__"
 
     @staticmethod
-    def _convert_ndarray_to_base_array(array: np.ndarray) -> "BaseArray":
+    def _convert_ndarray_to_base_array(array: npt.NDArray) -> "BaseArray":
         from src.dtypes import Array
 
         if array.dtype == np.float16:
@@ -128,13 +125,13 @@ class Scalar(BaseScalar):
         else:
             dtype = np.float32
 
-        array = Array(
+        array_obj = Array(
             array,
             dtype=dtype,
             requires_grad=False
         )
 
-        return array
+        return array_obj
 
     def backward(
             self,
@@ -146,8 +143,7 @@ class Scalar(BaseScalar):
             self._graph_clean_up()
 
     def detach(self) -> "BaseScalar":
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
+        result_obj = type(self)(
             self.value,
             requires_grad=False
         )
@@ -158,7 +154,7 @@ class Scalar(BaseScalar):
             other: Union[
                 "BaseScalar",
                 Floatable,
-                np.ndarray,
+                npt.NDArray,
                 "BaseArray"
             ],
             fn_getter: Callable[
@@ -191,8 +187,7 @@ class Scalar(BaseScalar):
         result = value.__getattribute__(operation_name)(sec)
         fn = fn_getter(value, sec, result)
 
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
+        result_obj =type(self)(
             result,
             requires_grad=False
         )
@@ -205,8 +200,7 @@ class Scalar(BaseScalar):
         return result_obj
 
     def __neg__(self) -> "BaseScalar":
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
+        result_obj = type(self)(
             -self.data,
             requires_grad=False
         )
@@ -215,43 +209,81 @@ class Scalar(BaseScalar):
 
         return result_obj
 
-    def __add__(self,
-                other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
+    def __add__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                npt.NDArray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             add_backward,
             "__add__")
 
-    def __radd__(self, other: float) -> "BaseScalar":
+    def __radd__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                npt.NDArray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self.__add__(other)
 
-    def __sub__(self, other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
+    def __sub__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                npt.NDArray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             sub_backward,
             "__sub__"
         )
 
-    def __rsub__(self, other: float) -> "BaseScalar":
+    def __rsub__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                npt.NDArray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self.__neg__() + other
 
-    def __mul__(self,
-                other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
+    def __mul__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                npt.NDArray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             mul_backward,
@@ -259,25 +291,50 @@ class Scalar(BaseScalar):
 
         )
 
-    def __rmul__(self, other: float) -> "BaseScalar":
+    def __rmul__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                npt.NDArray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self.__mul__(other)
 
-    def __truediv__(self,
-                    other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                    ):
+    def __truediv__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                npt.NDArray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             truediv_backward,
             "__truediv__"
         )
 
-    def __rtruediv__(self,
-                     other: float
-                     ) -> "BaseScalar":
+    def __rtruediv__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                npt.NDArray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]:
         return self._base_operations_wrapper(
             other,
             lambda a, b, c: lambda: truediv_backward(b, a, c)()[::-1],
@@ -290,7 +347,7 @@ class Scalar(BaseScalar):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -307,7 +364,7 @@ class Scalar(BaseScalar):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,
@@ -326,6 +383,6 @@ class Scalar(BaseScalar):
         if isinstance(other, BaseScalar):
             return self.data == other.data
         elif isinstance(other, Floatable):
-            return self.data == float(other)
+            return self.data == other
         else:
             return False

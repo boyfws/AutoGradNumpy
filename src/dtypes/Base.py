@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 
 import abc
 from typing import (
@@ -32,13 +33,13 @@ class BaseArray(abc.ABC):
         ]
     ]
 
-    grad: Optional[np.ndarray[Any, np.float32]]
+    grad: Optional[npt.NDArray[np.float32]]
     grad_fn: GradFnArray
 
     @abc.abstractmethod
     def __init__(
             self,
-            array: Union[np.ndarray, list],
+            array: Union[npt.NDArray, list],
             dtype: Optional[
                 Union[np.float16, np.float32, np.float64]
             ] = None,
@@ -51,7 +52,7 @@ class BaseArray(abc.ABC):
     @abc.abstractmethod
     def _backward(
             self,
-            prev_grad: np.ndarray
+            prev_grad: npt.NDArray
     ) -> None: ...
 
     @abc.abstractmethod
@@ -62,7 +63,7 @@ class BaseArray(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def data(self) -> np.ndarray: ...
+    def data(self) -> npt.NDArray: ...
 
     @overload
     def sum(self, axis: None = None) -> "BaseScalar": ...
@@ -140,7 +141,7 @@ class BaseScalar(abc.ABC):
     def _array_trigger(
             other: Union[
                 Floatable,
-                np.ndarray,
+                npt.NDArray,
                 "BaseScalar"
             ]
     ) -> None: ...
@@ -150,7 +151,7 @@ class BaseScalar(abc.ABC):
     def _array_trigger(
         other: Union[
             Floatable,
-            np.ndarray,
+            npt.NDArray,
             "BaseScalar",
             "BaseArray"
         ]
@@ -170,7 +171,7 @@ class BaseScalar(abc.ABC):
     @overload
     def _base_operations_wrapper(
             self,
-            other: np.ndarray,
+            other: npt.NDArray,
             fn_getter: Callable[
                 [Floatable, Floatable, Floatable],
                 GradFnScalar
@@ -195,7 +196,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 "BaseScalar",
                 Floatable,
-                np.ndarray,
+                npt.NDArray,
                 "BaseArray"
             ],
             fn_getter: Callable[
@@ -213,7 +214,7 @@ class BaseScalar(abc.ABC):
     def __add__(self, other: "BaseArray") -> NotImplementedType: ...
 
     @overload
-    def __add__(self, other: np.ndarray) -> "BaseArray": ...
+    def __add__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @overload
     def __add__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
@@ -225,7 +226,7 @@ class BaseScalar(abc.ABC):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -239,7 +240,7 @@ class BaseScalar(abc.ABC):
     def __radd__(self, other: Floatable) -> "BaseScalar": ...
 
     @overload
-    def __radd__(self, other: np.ndarray) -> "BaseArray": ...
+    def __radd__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @abc.abstractmethod
     def __radd__(
@@ -247,7 +248,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,
@@ -259,7 +260,7 @@ class BaseScalar(abc.ABC):
     def __sub__(self, other: "BaseArray") -> NotImplementedType: ...
 
     @overload
-    def __sub__(self, other: np.ndarray) -> "BaseArray": ...
+    def __sub__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @overload
     def __sub__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
@@ -271,7 +272,7 @@ class BaseScalar(abc.ABC):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -285,7 +286,7 @@ class BaseScalar(abc.ABC):
     def __rsub__(self, other: Floatable) -> "BaseScalar": ...
 
     @overload
-    def __rsub__(self, other: np.ndarray) -> "BaseArray": ...
+    def __rsub__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @abc.abstractmethod
     def __rsub__(
@@ -293,7 +294,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,
@@ -305,7 +306,7 @@ class BaseScalar(abc.ABC):
     def __mul__(self, other: "BaseArray") -> NotImplementedType: ...
 
     @overload
-    def __mul__(self, other: np.ndarray) -> "BaseArray": ...
+    def __mul__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @overload
     def __mul__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
@@ -317,7 +318,7 @@ class BaseScalar(abc.ABC):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -331,7 +332,7 @@ class BaseScalar(abc.ABC):
     def __rmul__(self, other: Floatable) -> "BaseScalar": ...
 
     @overload
-    def __rmul__(self, other: np.ndarray) -> "BaseArray": ...
+    def __rmul__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @abc.abstractmethod
     def __rmul__(
@@ -339,7 +340,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,
@@ -351,7 +352,7 @@ class BaseScalar(abc.ABC):
     def __truediv__(self, other: "BaseArray") -> NotImplementedType: ...
 
     @overload
-    def __truediv__(self, other: np.ndarray) -> "BaseArray": ...
+    def __truediv__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @overload
     def __truediv__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
@@ -363,7 +364,7 @@ class BaseScalar(abc.ABC):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -377,7 +378,7 @@ class BaseScalar(abc.ABC):
     def __rtruediv__(self, other: Floatable) -> "BaseScalar": ...
 
     @overload
-    def __rtruediv__(self, other: np.ndarray) -> "BaseArray": ...
+    def __rtruediv__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @abc.abstractmethod
     def __rtruediv__(
@@ -385,7 +386,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,
@@ -397,7 +398,7 @@ class BaseScalar(abc.ABC):
     def __pow__(self, other: "BaseArray") -> NotImplementedType: ...
 
     @overload
-    def __pow__(self, other: np.ndarray) -> "BaseArray": ...
+    def __pow__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @overload
     def __pow__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
@@ -409,7 +410,7 @@ class BaseScalar(abc.ABC):
                 "BaseArray",
                 "BaseScalar",
                 Floatable,
-                np.ndarray
+                npt.NDArray
             ]) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -423,7 +424,7 @@ class BaseScalar(abc.ABC):
     def __rpow__(self, other: Floatable) -> "BaseScalar": ...
 
     @overload
-    def __rpow__(self, other: np.ndarray) -> "BaseArray": ...
+    def __rpow__(self, other: npt.NDArray) -> "BaseArray": ...
 
     @abc.abstractmethod
     def __rpow__(
@@ -431,7 +432,7 @@ class BaseScalar(abc.ABC):
             other: Union[
                 Floatable,
                 "BaseArray",
-                np.ndarray
+                npt.NDArray
             ]
     ) -> Union[
         NotImplementedType,

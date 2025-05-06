@@ -5,6 +5,7 @@ from typing import (
     Any
 )
 import numpy as np
+import numpy.typing as npt
 
 Floatable = Union[
     int,
@@ -15,16 +16,16 @@ Floatable = Union[
 GradFnScalar = Callable[
             [],
             tuple[
-                Union[Floatable, np.ndarray[Any, np.float32], None],
-                Union[Floatable, np.ndarray[Any, np.float32], None],
+                Union[Floatable, npt.NDArray[np.float32], None],
+                Union[Floatable, npt.NDArray[np.float32], None],
             ]
         ]
 
 GradFnArray = Callable[
-    [np.ndarray[Any, np.ndarray[Any, np.float32]]],
+    [npt.NDArray[np.float32]],
     tuple[
-        Union[Floatable, np.ndarray[Any, np.float32], None],
-        Union[Floatable, np.ndarray[Any, np.float32], None],
+        Union[Floatable, npt.NDArray[np.float32], None],
+        Union[Floatable, npt.NDArray[np.float32], None],
     ]
 ]
 

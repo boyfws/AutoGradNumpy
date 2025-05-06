@@ -8,7 +8,7 @@ def truediv_backward(
 ) -> GradFnScalar:
 
     def fn() -> tuple[Floatable, Floatable]:
-        return 1 / den, -result / den
+        return 1 / den, -result / den  # type: ignore[operator]
 
     return fn
 
