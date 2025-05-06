@@ -6,24 +6,44 @@ from typing import (
     Callable,
     Optional,
     Type,
-    overload
+    overload,
+    Any
 )
 
-from src._types import Floatable, GradFnScalar, NotImplementedType
+from src._types import (Floatable,
+                        GradFnScalar,
+                        NotImplementedType,
+                        GradFnArray)
 
 
 class BaseArray(abc.ABC):
     _ret_scalar_dtype: Type["BaseScalar"]
     _dtype: Union[np.float16, np.float32, np.float64]
     prev_1: Optional[
-        Union["BaseScalar", "BaseArray"]
+        Union[
+            "BaseScalar",
+            "BaseArray"
+        ]
     ]
     prev_2: Optional[
-        Union["BaseScalar", "BaseArray"]
+        Union[
+            "BaseScalar",
+            "BaseArray"
+        ]
     ]
 
-    grad: Optional[np.ndarray]
-    grad_fn: ...
+    grad: Optional[np.ndarray[Any, np.float32]]
+    grad_fn: GradFnArray
+
+    @abc.abstractmethod
+    def __init__(
+            self,
+            array: Union[np.ndarray, list],
+            dtype: Optional[
+                Union[np.float16, np.float32, np.float64]
+            ] = None,
+            requires_grad: bool = False,
+    ) -> None: ...
 
     @abc.abstractmethod
     def _zero_grad(self) -> None: ...
@@ -43,6 +63,21 @@ class BaseArray(abc.ABC):
     @property
     @abc.abstractmethod
     def data(self) -> np.ndarray: ...
+
+    @overload
+    def sum(self, axis: None = None) -> "BaseScalar": ...
+
+    @overload
+    def sum(self, axis: int) -> "BaseArray": ...
+
+    @abc.abstractmethod
+    def sum(
+            self,
+            axis: Optional[int] = None
+    ) -> Union[
+        "BaseScalar",
+        "BaseArray"
+    ]: ...
 
 
 class BaseScalar(abc.ABC):
@@ -119,7 +154,7 @@ class BaseScalar(abc.ABC):
             "BaseScalar",
             "BaseArray"
         ]
-    ) -> Union[NotImplementedType, None]:...
+    ) -> Union[NotImplementedType, None]: ...
 
     @overload
     def _base_operations_wrapper(
@@ -381,7 +416,6 @@ class BaseScalar(abc.ABC):
         "BaseScalar",
     ]: ...
 
-
     @overload
     def __rpow__(self, other: "BaseArray") -> NotImplementedType: ...
 
@@ -406,7 +440,4 @@ class BaseScalar(abc.ABC):
     ]: ...
 
     @abc.abstractmethod
-    def __eq__(self,
-               other: Union["BaseScalar", Floatable]
-               ) -> bool:
-        pass
+    def __eq__(self, other: object) -> bool: ...
