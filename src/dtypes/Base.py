@@ -1,9 +1,15 @@
 import numpy as np
 
 import abc
-from typing import Union, Callable, Optional, Type
-from src.backward.scalar import *
-from src.dtypes._EmptyCallable import _EmptyCallable
+from typing import (
+    Union,
+    Callable,
+    Optional,
+    Type,
+    overload
+)
+
+from src._types import Floatable, GradFnScalar, NotImplementedType
 
 
 class BaseArray(abc.ABC):
@@ -19,281 +25,388 @@ class BaseArray(abc.ABC):
     grad: Optional[np.ndarray]
     grad_fn: ...
 
-    def item(self) -> np.ndarray:
-        pass
+    @abc.abstractmethod
+    def _zero_grad(self) -> None: ...
 
-    def _zero_grad(self) -> None:
-        pass
-
+    @abc.abstractmethod
     def _backward(
             self,
             prev_grad: np.ndarray
-    ) -> None:
-        pass
+    ) -> None: ...
 
-    def _graph_clean_up(self):
-        pass
+    @abc.abstractmethod
+    def _graph_clean_up(self): ...
 
-    def detach(self) -> "BaseArray":
-        pass
+    @abc.abstractmethod
+    def detach(self) -> "BaseArray": ...
+
+    @property
+    @abc.abstractmethod
+    def data(self) -> np.ndarray: ...
 
 
-class BaseScalar:
+class BaseScalar(abc.ABC):
     _dtype: Union[
-        np.float16,
-        np.float32,
-        np.float64
+        Type[np.float16],
+        Type[np.float32],
+        Type[np.float64]
     ]
     prev_1: Optional[
-        Union["BaseScalar", "BaseArray"]
-    ]
-    prev_2: Optional[
-        Union["BaseScalar", "BaseArray"]
-    ]
-    grad: Optional[float]
-    grad_fn: Optional[
-        Callable[
-            [],
-            tuple[
-                Union[float, np.ndarray, None],
-                Union[float, np.ndarray, None],
-            ]
+        Union[
+            "BaseScalar",
+            "BaseArray"
         ]
     ]
+    prev_2: Optional[
+        Union[
+            "BaseScalar",
+            "BaseArray"
+        ]
+    ]
+    grad: Optional[Floatable]
+    grad_fn: Optional[GradFnScalar]
 
-    def __init__(
-            self,
-            value: float,
-            requires_grad: bool = False
-    ) -> None:
-        self.value = self._dtype(value)
-        self.requires_grad = requires_grad
-
-        self.prev_1 = None
-        self.prev_2 = None
-        self.grad = None
-        self.grad_fn = None
-
-    def _array_trigger(self,
-                       other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                       ) -> None:
-        if isinstance(other, BaseArray):
-            raise NotImplementedError
-
-    def __str__(self) -> str:
-        return str(self.value)
-
+    @abc.abstractmethod
     def item(self) -> Union[
         np.float16,
         np.float32,
         np.float64
-    ]:
-        return self.value
+    ]: ...
 
-    def _zero_grad(self) -> None:
-        if self.grad is not None:
-            self.grad = 0
+    @property
+    @abc.abstractmethod
+    def data(self) -> Union[
+        np.float16,
+        np.float32,
+        np.float64
+    ]: ...
 
-    def _graph_clean_up(self) -> None:
-        if self.grad_fn is not None:
-            self.grad_fn = _EmptyCallable()
+    @abc.abstractmethod
+    def _zero_grad(self) -> None: ...
 
-        if self.prev_1 is not None:
-            self.prev_1._graph_clean_up()
-            self.prev_1 = None
+    @abc.abstractmethod
+    def _graph_clean_up(self) -> None: ...
 
-        if self.prev_2 is not None:
-            self.prev_2._graph_clean_up()
-            self.prev_2 = None
+    @abc.abstractmethod
+    def _backward(self, prev_grad: Floatable) -> None: ...
 
-    def _backward(
+    @abc.abstractmethod
+    def backward(self, retain_graph: Optional[bool] = False) -> None: ...
+
+    @abc.abstractmethod
+    def detach(self) -> "BaseScalar": ...
+
+    @staticmethod
+    @overload
+    def _array_trigger(other: BaseArray) -> NotImplementedType: ...
+
+    @staticmethod
+    @overload
+    def _array_trigger(
+            other: Union[
+                Floatable,
+                np.ndarray,
+                "BaseScalar"
+            ]
+    ) -> None: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    def _array_trigger(
+        other: Union[
+            Floatable,
+            np.ndarray,
+            "BaseScalar",
+            "BaseArray"
+        ]
+    ) -> Union[NotImplementedType, None]:...
+
+    @overload
+    def _base_operations_wrapper(
             self,
-            prev_grad: float,
-    ) -> None:
-        if self.requires_grad:
-            if self.grad is None:
-                self.grad = prev_grad
-            else:
-                self.grad += prev_grad
+            other: "BaseArray",
+            fn_getter: Callable[
+                [Floatable, Floatable, Floatable],
+                GradFnScalar
+            ],
+            operation_name: str
+    ) -> NotImplementedType: ...
 
-        if self.grad_fn is not None:
-
-            if isinstance(self.grad_fn, _EmptyCallable):
-                raise RuntimeError("The computational graph was cleaned up after the backward")
-
-            grad1, grad2 = self.grad_fn()
-
-            if grad1 is not None and self.prev_1 is not None:
-                full_grad1 = grad1 * prev_grad
-                self.prev_1._backward(full_grad1)
-
-            if grad2 is not None and self.prev_2 is not None:
-                full_grad2 = grad2 * prev_grad
-                self.prev_2._backward(full_grad2)
-
-    def backward(
+    @overload
+    def _base_operations_wrapper(
             self,
-            retain_graph: bool = False
-    ) -> None:
-        self._backward(1)
+            other: np.ndarray,
+            fn_getter: Callable[
+                [Floatable, Floatable, Floatable],
+                GradFnScalar
+            ],
+            operation_name: str
+    ) -> "BaseArray": ...
 
-        if not retain_graph:
-            self._graph_clean_up()
+    @overload
+    def _base_operations_wrapper(
+            self,
+            other: Union["BaseScalar", Floatable],
+            fn_getter: Callable[
+                [Floatable, Floatable, Floatable],
+                GradFnScalar
+            ],
+            operation_name: str
+    ) -> "BaseScalar": ...
 
-    def detach(self) -> "BaseScalar":
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
-            self.value,
-            requires_grad=False
-        )
-        return result_obj
-
+    @abc.abstractmethod
     def _base_operations_wrapper(
             self,
             other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ],
-            fn_getter: Callable,
+                "BaseScalar",
+                Floatable,
+                np.ndarray,
+                "BaseArray"
+            ],
+            fn_getter: Callable[
+                [Floatable, Floatable, Floatable],
+                GradFnScalar
+            ],
             operation_name: str
-    ) -> "BaseScalar":
-        self._array_trigger(other)
-        flag = isinstance(other, BaseScalar)
-        value = self.item()
+    ) -> Union[
+        "BaseScalar",
+        "BaseArray",
+        NotImplementedType
+    ]: ...
 
-        if flag:
-            sec = other.value
-        else:
-            sec = other
+    @overload
+    def __add__(self, other: "BaseArray") -> NotImplementedType: ...
 
-        result = value.__getattribute__(operation_name)(sec)
-        fn = fn_getter(value, sec, result)
+    @overload
+    def __add__(self, other: np.ndarray) -> "BaseArray": ...
 
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
-            result,
-            requires_grad=False
-        )
-        result_obj.grad_fn = fn
+    @overload
+    def __add__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
 
-        result_obj.prev_1 = self
-        if flag:
-            result_obj.prev_2 = other
+    @abc.abstractmethod
+    def __add__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
 
-        return result_obj
+    @overload
+    def __radd__(self, other: "BaseArray") -> NotImplementedType: ...
 
-    def __neg__(self) -> "BaseScalar":
-        result_obj = object.__new__(type(self))
-        result_obj.__init__(
-            -self.value,
-            requires_grad=False
-        )
-        result_obj.grad_fn = neg_backward()
-        result_obj.prev_1 = self
+    @overload
+    def __radd__(self, other: Floatable) -> "BaseScalar": ...
 
-        return result_obj
+    @overload
+    def __radd__(self, other: np.ndarray) -> "BaseArray": ...
 
-    def __add__(self,
-                other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            add_backward,
-            "__add__")
+    @abc.abstractmethod
+    def __radd__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
 
-    def __radd__(self, other: float) -> "BaseScalar":
-        return self.__add__(other)
+    @overload
+    def __sub__(self, other: "BaseArray") -> NotImplementedType: ...
 
-    def __sub__(self, other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            sub_backward,
-            "__sub__"
-        )
+    @overload
+    def __sub__(self, other: np.ndarray) -> "BaseArray": ...
 
-    def __rsub__(self, other: float) -> "BaseScalar":
-        return self.__neg__() + other
+    @overload
+    def __sub__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
 
-    def __mul__(self,
-                other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            mul_backward,
-            "__mul__"
+    @abc.abstractmethod
+    def __sub__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
 
-        )
+    @overload
+    def __rsub__(self, other: "BaseArray") -> NotImplementedType: ...
 
-    def __rmul__(self, other: float) -> "BaseScalar":
-        return self.__mul__(other)
+    @overload
+    def __rsub__(self, other: Floatable) -> "BaseScalar": ...
 
-    def __truediv__(self,
-                    other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-                    ):
-        return self._base_operations_wrapper(
-            other,
-            truediv_backward,
-            "__truediv__"
-        )
+    @overload
+    def __rsub__(self, other: np.ndarray) -> "BaseArray": ...
 
-    def __rtruediv__(self,
-                     other: float
-                     ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            lambda a, b, c: lambda: truediv_backward(b, a, c)()[::-1],
-            "__rtruediv__"
-        )
+    @abc.abstractmethod
+    def __rsub__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
 
+    @overload
+    def __mul__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __mul__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @overload
+    def __mul__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
+
+    @abc.abstractmethod
+    def __mul__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
+
+    @overload
+    def __rmul__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __rmul__(self, other: Floatable) -> "BaseScalar": ...
+
+    @overload
+    def __rmul__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @abc.abstractmethod
+    def __rmul__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
+
+    @overload
+    def __truediv__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __truediv__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @overload
+    def __truediv__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
+
+    @abc.abstractmethod
+    def __truediv__(
+            self,
+            other: Union[
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
+
+    @overload
+    def __rtruediv__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __rtruediv__(self, other: Floatable) -> "BaseScalar": ...
+
+    @overload
+    def __rtruediv__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @abc.abstractmethod
+    def __rtruediv__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
+
+    @overload
+    def __pow__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __pow__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @overload
+    def __pow__(self, other: Union[Floatable, "BaseScalar"]) -> "BaseScalar": ...
+
+    @abc.abstractmethod
     def __pow__(
             self,
             other: Union[
-                           float,
-                           "BaseScalar",
-                           "BaseArray"
-                       ]
-    ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            power_backward,
-            "__pow__"
-        )
+                "BaseArray",
+                "BaseScalar",
+                Floatable,
+                np.ndarray
+            ]) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
 
-    def __rpow__(self,
-                 other: float
-                 ) -> "BaseScalar":
-        return self._base_operations_wrapper(
-            other,
-            lambda a, b, c: lambda: power_backward(b, a, c)()[::-1],
-            "__rpow__"
-        )
 
+    @overload
+    def __rpow__(self, other: "BaseArray") -> NotImplementedType: ...
+
+    @overload
+    def __rpow__(self, other: Floatable) -> "BaseScalar": ...
+
+    @overload
+    def __rpow__(self, other: np.ndarray) -> "BaseArray": ...
+
+    @abc.abstractmethod
+    def __rpow__(
+            self,
+            other: Union[
+                Floatable,
+                "BaseArray",
+                np.ndarray
+            ]
+    ) -> Union[
+        NotImplementedType,
+        "BaseArray",
+        "BaseScalar",
+    ]: ...
+
+    @abc.abstractmethod
     def __eq__(self,
-               other: Union["BaseScalar", float]
+               other: Union["BaseScalar", Floatable]
                ) -> bool:
-        if isinstance(other, BaseScalar):
-            return self.value == other.value
-        else:
-            return self.value == other
+        pass

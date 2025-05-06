@@ -1,6 +1,6 @@
-from src.dtypes.Base import BaseScalar
+from .Scalar import Scalar
 import numpy as np
 
 
-class Float16(BaseScalar):
+class Float16(Scalar):
     _dtype = np.float16
