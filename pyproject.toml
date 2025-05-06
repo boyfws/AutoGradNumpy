@@ -1,0 +1,28 @@
+[tool.ruff]
+ignore = [
+  "E203",
+]
+
+exclude = [
+  "__pycache__",
+  ".git",
+  "test",
+]
+
+
+
+[tool.black]
+
+target-version = ['py37', 'py38', 'py39', "py310"]
+
+exclude = '''
+/(\.venv|venv|\.idea|build|dist|__pycache__|test)/
+'''
+
+
+[tool.isort]
+profile = "black"
+skip = ["test", ".venv", "venv", ".idea"]
+line_length = 88
+known_first_party = ["src"]
+known_third_party = ["numpy"]

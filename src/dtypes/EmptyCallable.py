@@ -4,6 +4,7 @@ class _EmptyCallable:
     the components of the computational graph at the backpropagation pass through it,
     we can consider this class as a marker that the backpropagation pass has been done
     """
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -12,10 +13,8 @@ class _EmptyCallable:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             self._initialized = True
 
-    def __call__(self) -> tuple[
-        None, None
-    ]:
+    def __call__(self) -> tuple[None, None]:
         return None, None

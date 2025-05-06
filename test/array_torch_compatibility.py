@@ -120,3 +120,60 @@ def test_array_neg_compat():
         a = torch.tensor([1.0, -1.0, 2.0], dtype=torch.float32, requires_grad=True)
         return -a, [a]
     compare_tensor_ops(fn_arr, fn_t, name="array_neg")
+
+def test_broadcast1():
+    array_a = np.array([1, 2, 3])
+    array_b = np.array([
+        [0, 8, 7],
+        [8, 9, 2]
+    ])
+
+    def fn_arr():
+        a = Array(array_a, requires_grad=True)
+        b = Array(array_b, requires_grad=True)
+
+        c = (a + b)
+
+        return  c, [a, b]
+
+    def fn_t():
+        a = torch.Tensor(array_a).to(torch.float32)
+        a.requires_grad = True
+
+        b = torch.Tensor(array_b).to(torch.float32)
+        b.requires_grad = True
+
+        c = (a + b)
+
+        return c, [a, b]
+
+    compare_tensor_ops(fn_arr, fn_t, name="array_broadcast1")
+
+
+def test_broadcast2():
+    array_a = np.array([1, 2, 3])
+    array_b = np.array([
+        [0, 8, 7],
+        [8, 9, 2]
+    ])
+
+    def fn_arr():
+        a = Array(array_a, requires_grad=True)
+        b = Array(array_b, requires_grad=True)
+
+        c = (a + b) * b
+
+        return  c, [a, b]
+
+    def fn_t():
+        a = torch.Tensor(array_a).to(torch.float32)
+        a.requires_grad = True
+
+        b = torch.Tensor(array_b).to(torch.float32)
+        b.requires_grad = True
+
+        c = (a + b) * b
+
+        return c, [a, b]
+
+    compare_tensor_ops(fn_arr, fn_t, name="array_broadcast2")

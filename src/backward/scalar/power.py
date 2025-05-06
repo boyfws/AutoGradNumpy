@@ -1,11 +1,10 @@
 import numpy as np
-from src._types import Floatable, GradFnScalar
+
+from src.types import Floatable, GradFnScalar
 
 
 def power_backward(
-        val: Floatable,
-        power: Floatable,
-        calculated: Floatable
+    val: Floatable, power: Floatable, calculated: Floatable
 ) -> GradFnScalar:
     if val == 0:
         val_grad = 0.0
