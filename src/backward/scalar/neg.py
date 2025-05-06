@@ -1,12 +1,9 @@
-from typing import Callable
+from src._types import GradFnScalar, Floatable
 
 
-def neg_backward() -> Callable[
-    [],
-    tuple[float, None]
-]:
+def neg_backward() -> GradFnScalar:
 
-    def fn():
+    def fn() -> tuple[Floatable, None]:
         return -1, None
 
     return fn

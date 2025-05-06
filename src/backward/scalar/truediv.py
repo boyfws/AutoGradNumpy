@@ -1,19 +1,13 @@
-from typing import Callable
+from src._types import Floatable, GradFnScalar
 
 
 def truediv_backward(
-        num: float,
-        den: float,
-        result: float
-) -> Callable[
-    [],
-    tuple[
-        float,
-        float
-    ]
-]:
+        num: Floatable,
+        den: Floatable,
+        result: Floatable
+) -> GradFnScalar:
 
-    def fn():
+    def fn() -> tuple[Floatable, Floatable]:
         return 1 / den, -result / den
 
     return fn

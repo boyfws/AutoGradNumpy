@@ -1,16 +1,16 @@
-from typing import Callable
+from src._types import GradFnScalar, Floatable
 
 
 def add_backward(
-        a: float,
-        b: float,
-        result: float
-) -> Callable[
-    [],
-    tuple[
-        float, float
-    ]
-]:
-    def fn():
-        return 1, 1
+        a: Floatable,
+        b: Floatable,
+        result: Floatable
+) -> GradFnScalar:
+
+    def fn() -> tuple[
+        Floatable,
+        Floatable,
+    ]:
+        return 1.0, 1.0
+
     return fn

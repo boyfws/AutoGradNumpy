@@ -11,7 +11,7 @@ def power_backward(
     tuple[float, float]
 ]:
     if val == 0:
-        val_grad = 0
+        val_grad = 0.0
     else:
         val_grad = power * calculated / val
 
