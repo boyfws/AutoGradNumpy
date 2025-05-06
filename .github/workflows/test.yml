@@ -28,7 +28,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt -r test/requirements.txt \
-                      ruff black isort pyright mypy pytest
+                      ruff black isort pyright mypy pytest -q
 
       - name: Run ruff
         run: ruff check . --exit-one
