@@ -1,5 +1,9 @@
 import pytest
 import torch
+
+from add_src_to_path import append_src
+append_src()
+
 from src import Float32
 
 # Test values (integers to avoid precision issues)

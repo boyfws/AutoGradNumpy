@@ -1,8 +1,10 @@
 import numpy as np
 import pytest
-from src import Array
-from src import Float32
 
+from add_src_to_path import append_src
+append_src()
+
+from src import Array, Float32
 
 @pytest.mark.parametrize("dtype", [
     np.float32,

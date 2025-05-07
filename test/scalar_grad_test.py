@@ -1,6 +1,10 @@
 import pytest
-from src import Float32
 import math
+
+from add_src_to_path import append_src
+append_src()
+
+from src import Float32
 
 # test values (integers for precision)
 TEST_VALUES = [(10, 3), (100, 20), (15, 5)]

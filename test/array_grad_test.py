@@ -1,5 +1,9 @@
 import numpy as np
-from src.dtypes import Array
+
+from add_src_to_path import append_src
+append_src()
+
+from src import Array
 
 
 def test_broadcast_add_grad_array():

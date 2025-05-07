@@ -1,6 +1,10 @@
 import pytest
-from src import Float32, Array
 import numpy as np
+
+from add_src_to_path import append_src
+append_src()
+
+from src import Float32, Array
 
 TEST_VALUES = [(10 ** 6, 32131), (21, 236), (8971, 42)]
 
