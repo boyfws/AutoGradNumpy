@@ -71,7 +71,7 @@ class Array(BaseArray):
         return self.value.__getitem__(key)
 
     def __setitem__(
-        self, key: Any, value: Union[npt.ArrayLike[Any], Floatable]
+        self, key: Any, value: Union[npt.ArrayLike, Floatable]
     ) -> None:
         self.value.__setitem__(key, value)
 

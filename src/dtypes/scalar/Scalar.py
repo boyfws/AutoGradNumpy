@@ -12,6 +12,8 @@ from src.backward.scalar import (
     mul_backward,
     neg_backward,
     power_backward,
+    rpow_backward,
+    rtruediv_backward,
     sub_backward,
     truediv_backward,
 )
@@ -239,7 +241,7 @@ class Scalar(BaseScalar):
     ]:
         return self._base_operations_wrapper(
             other,
-            lambda a, b, c: lambda: truediv_backward(b, a, c)()[::-1],
+            rtruediv_backward,
             "__rtruediv__",
         )
 
@@ -255,9 +257,7 @@ class Scalar(BaseScalar):
     def __rpow__(
         self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]
     ) -> Union[NotImplementedType, "BaseScalar", "BaseArray"]:
-        return self._base_operations_wrapper(
-            other, lambda a, b, c: lambda: power_backward(b, a, c)()[::-1], "__rpow__"
-        )
+        return self._base_operations_wrapper(other, rpow_backward, "__rpow__")
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BaseScalar):
