@@ -9,17 +9,18 @@ from src.types import Floatable, GradFnArray, GradFnScalar, NotImplementedType
 
 class BaseArray(abc.ABC):
     _ret_scalar_dtype: Type["BaseScalar"]
-    _dtype: Union[np.float16, np.float32, np.float64]
+    _dtype: Union[Type[np.float16], Type[np.float32], Type[np.float64]]
     prev_1: Optional[Union["BaseScalar", "BaseArray"]]
     prev_2: Optional[Union["BaseScalar", "BaseArray"]]
 
+    value: npt.NDArray[Union[np.float16, np.float32, np.float64]]
     grad: Optional[npt.NDArray[np.float32]]
-    grad_fn: GradFnArray
+    grad_fn: Optional[GradFnArray]
 
     @abc.abstractmethod
     def __init__(
         self,
-        array: Union[npt.NDArray[Any], list],
+        array: npt.ArrayLike,
         dtype: Optional[Union[np.float16, np.float32, np.float64]] = None,
         requires_grad: bool = False,
     ) -> None: ...

@@ -3,13 +3,13 @@ from typing import Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from src.types import Floatable, GradFnArray
+from src.types import ArrayValueType, Floatable, GradFnArray
 
 from .unbroadcast import unbroadcast
 
 
 def add_backward(
-    a: npt.NDArray[Any], b: Union[npt.NDArray[Any], Floatable], result: npt.NDArray[Any]
+    a: ArrayValueType, b: Union[npt.NDArray[Any], Floatable], result: npt.NDArray[Any]
 ) -> GradFnArray:
 
     a_shape = a.shape

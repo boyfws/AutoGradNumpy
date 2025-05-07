@@ -16,7 +16,7 @@ from src.backward.scalar import (
     truediv_backward,
 )
 from src.dtypes.Base import BaseArray, BaseScalar
-from src.dtypes.EmptyCallable import _EmptyCallable
+from src.dtypes.EmptyCallable import EmptyCallable
 from src.types import Floatable, GradFnScalar, NotImplementedType
 
 
@@ -57,7 +57,7 @@ class Scalar(BaseScalar):
 
     def _graph_clean_up(self) -> None:
         if self.grad_fn is not None:
-            self.grad_fn = _EmptyCallable()
+            self.grad_fn = EmptyCallable()
 
         if self.prev_1 is not None:
             self.prev_1._graph_clean_up()
@@ -79,7 +79,7 @@ class Scalar(BaseScalar):
 
         if self.grad_fn is not None:
 
-            if isinstance(self.grad_fn, _EmptyCallable):
+            if isinstance(self.grad_fn, EmptyCallable):
                 raise RuntimeError(
                     "The computational graph was cleaned up after the backward"
                 )
@@ -150,7 +150,7 @@ class Scalar(BaseScalar):
         flag = isinstance(other, BaseScalar)
 
         if flag:
-            sec = other.value
+            sec = other.item()
         else:
             sec = other
 
@@ -203,7 +203,7 @@ class Scalar(BaseScalar):
         "BaseArray",
         "BaseScalar",
     ]:
-        return self.__neg__() + other
+        return self.__neg__() + other  # type: ignore[operator]
 
     def __mul__(
         self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]

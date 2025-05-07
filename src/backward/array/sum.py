@@ -3,12 +3,12 @@ from typing import Any, Literal, Union, overload
 import numpy as np
 import numpy.typing as npt
 
-from src.types import GradFnArray, GradFnScalar
+from src.types import ArrayValueType, GradFnArray, GradFnScalar
 
 
 @overload
 def sum_backward(
-    value: npt.NDArray[Any],
+    value: ArrayValueType,
     axis: None,
 ) -> GradFnScalar: ...
 
@@ -22,13 +22,13 @@ def sum_backward(
 
 @overload
 def sum_backward(
-    value: npt.NDArray[Any],
+    value: ArrayValueType,
     axis: int,
 ) -> GradFnArray: ...
 
 
 def sum_backward(
-    value: npt.NDArray[Any],
+    value: ArrayValueType,
     axis: Union[int, None],
 ) -> Union[
     GradFnArray,
@@ -37,17 +37,17 @@ def sum_backward(
 
     if axis is None or (axis == 0 and value.ndim == 1):
 
-        def fn() -> tuple[npt.NDArray[np.float32], None]:
+        def fn1() -> tuple[npt.NDArray[np.float32], None]:
             return np.ones_like(value, dtype=np.float32), None
 
-        return fn
+        return fn1
     else:
 
-        def fn(
+        def fn2(
             prev_grad: npt.NDArray[np.float32],
         ) -> tuple[npt.NDArray[np.float32], None]:
             grad = np.expand_dims(prev_grad, axis=axis)
             grad = np.broadcast_to(grad, value.shape)
             return grad.astype(np.float32), None
 
-        return fn
+        return fn2

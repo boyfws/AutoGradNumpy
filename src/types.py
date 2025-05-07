@@ -1,25 +1,29 @@
 from types import NotImplementedType
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 
 Floatable = Union[int, float, np.generic]
 
+GradEl = Union[Floatable, npt.NDArray[np.float32]]
+
 GradFnScalar = Callable[
     [],
     tuple[
-        Union[Floatable, npt.NDArray[np.float32], None],
-        Union[Floatable, npt.NDArray[np.float32], None],
+        GradEl,
+        Optional[GradEl],
     ],
 ]
 
 GradFnArray = Callable[
     [npt.NDArray[np.float32]],
     tuple[
-        Union[Floatable, npt.NDArray[np.float32], None],
-        Union[Floatable, npt.NDArray[np.float32], None],
+        GradEl,
+        Optional[GradEl],
     ],
 ]
+
+ArrayValueType = npt.NDArray[Union[np.float16, np.float32, np.float64]]
 
 NotImplementedType = NotImplementedType

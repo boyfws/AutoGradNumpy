@@ -1,4 +1,4 @@
-class _EmptyCallable:
+class EmptyCallable:
     """
     The class of singleton to which grad_fn will be replaced in
     the components of the computational graph at the backpropagation pass through it,

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Type, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -8,12 +8,14 @@ from src.backward.array import (
     mul_backward,
     neg_backward,
     pow_backward,
+    rpow_backward,
+    rtruediv_backward,
     sub_backward,
     sum_backward,
     truediv_backward,
 )
 from src.dtypes.Base import BaseArray, BaseScalar
-from src.dtypes.EmptyCallable import _EmptyCallable
+from src.dtypes.EmptyCallable import EmptyCallable
 from src.dtypes.scalar import Float16, Float32, Float64
 from src.types import Floatable
 
@@ -23,11 +25,13 @@ class Array(BaseArray):
 
     def __init__(
         self,
-        array: Union[npt.NDArray[Any], list],
-        dtype: Optional[Union[np.float16, np.float32, np.float64]] = None,
+        array: npt.ArrayLike,
+        dtype: Optional[
+            Union[Type[np.float16], Type[np.float32], Type[np.float64]]
+        ] = None,
         requires_grad: bool = False,
     ):
-        if isinstance(array, list):
+        if not isinstance(array, np.ndarray):
             array = np.array(array)
 
         if dtype is None:
@@ -61,18 +65,22 @@ class Array(BaseArray):
     def data(self) -> npt.NDArray[Any]:
         return self.value.copy()
 
-    def __getitem__(self, *args, **kwargs) -> npt.NDArray[Any] | float:
-        return self.value.__getitem__(*args, **kwargs)
+    def __getitem__(
+        self, key: Any
+    ) -> Union[npt.NDArray[Union[np.float16, np.float32, np.float64]], Floatable]:
+        return self.value.__getitem__(key)
 
-    def __setitem__(self, *args, **kwargs) -> None:
+    def __setitem__(
+        self, key: Any, value: Union[npt.ArrayLike[Any], Floatable]
+    ) -> None:
+        self.value.__setitem__(key, value)
+
         self.requires_grad = False
 
         if self.grad is not None:
             self.grad = np.zeros_like(self.value, dtype=np.float32)
 
-        self.value.__setitem__(*args, **kwargs)
-
-    def _backward(self, prev_grad: npt.NDArray[Any]) -> None:
+    def _backward(self, prev_grad: npt.NDArray[np.float32]) -> None:
         if self.requires_grad:
             if self.grad is None:
                 self.grad = prev_grad
@@ -81,7 +89,7 @@ class Array(BaseArray):
 
         if self.grad_fn is not None:
 
-            if isinstance(self.grad_fn, _EmptyCallable):
+            if isinstance(self.grad_fn, EmptyCallable):
                 raise RuntimeError(
                     "The computational graph was cleaned up after the backward"
                 )
@@ -100,7 +108,7 @@ class Array(BaseArray):
 
     def _graph_clean_up(self) -> None:
         if self.grad_fn is not None:
-            self.grad_fn = _EmptyCallable()
+            self.grad_fn = EmptyCallable()
 
         if self.prev_1 is not None:
             self.prev_1._graph_clean_up()
@@ -122,7 +130,7 @@ class Array(BaseArray):
     def _promote_type(
         a: npt.NDArray[Union[np.float16, np.float32, np.float64]],
         b: Union[npt.NDArray[Any], Floatable, np.float16, np.float32, np.float64],
-    ) -> Union[np.float16, np.float32, np.float64]:
+    ) -> Union[Type[np.float16], Type[np.float32], Type[np.float64]]:
         if isinstance(b, np.ndarray):
             b_dtype = b.dtype
             if b_dtype not in (np.float16, np.float32, np.float64):
@@ -186,55 +194,73 @@ class Array(BaseArray):
 
         return result_obj
 
-    def __add__(self, other):
+    def __add__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(other, add_backward, "__add__")
 
-    def __radd__(self, other):
+    def __radd__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar"]
+    ) -> "BaseArray":
         return self.__add__(other)
 
-    def __sub__(self, other):
+    def __sub__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(other, sub_backward, "__sub__")
 
-    def __rsub__(self, other):
-        return self.__neg__() + other
+    def __rsub__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar"]
+    ) -> "BaseArray":
+        return self.__neg__() + other  # type: ignore[operator]
 
-    def __mul__(self, other):
+    def __mul__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(other, mul_backward, "__mul__")
 
-    def __rmul__(self, other):
+    def __rmul__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar"]
+    ) -> "BaseArray":
         return self.__mul__(other)
 
-    def __truediv__(self, other):
+    def __truediv__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(other, truediv_backward, "__truediv__")
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(
             other,
-            lambda a, b, c: lambda prev_grad: truediv_backward(b, a, c)(prev_grad)[
-                ::-1
-            ],
+            rtruediv_backward,
             "__rtruediv__",
         )
 
-    def __pow__(self, other):
+    def __pow__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(other, pow_backward, "__pow__")
 
-    def __rpow__(self, other):
+    def __rpow__(
+        self, other: Union[Floatable, npt.NDArray[Any], "BaseScalar"]
+    ) -> "BaseArray":
         return self._base_operations_wrapper(
             other,
-            lambda a, b, c: lambda prev_grad: pow_backward(b, a, c)(prev_grad)[::-1],
+            rpow_backward,
             "__rpow__",
         )
 
-    def __eq__(
-        self, other: Union["BaseArray", npt.NDArray[Any]]
-    ) -> Union[bool, npt.NDArray[Any]]:
+    def __eq__(self, other: object) -> Union[bool, npt.NDArray[np.bool_]]:
         if isinstance(other, BaseArray):
             return self.data == other.data
-        else:
+        elif isinstance(other, np.ndarray):
             return self.data == other
+        else:
+            return False
 
-    def sum(self, axis=None) -> Union["BaseScalar", "BaseArray"]:
+    def sum(self, axis: Optional[int] = None) -> Union["BaseScalar", "BaseArray"]:
         value = self.data
         result = value.sum(axis=axis)
         if axis is None:
