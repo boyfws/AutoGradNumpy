@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Callable, Union, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -6,6 +6,28 @@ import numpy.typing as npt
 from src.types import ArrayValueType, Floatable, GradFnArray
 
 from .unbroadcast import unbroadcast
+
+
+@overload
+def add_backward(
+    a: ArrayValueType, b: npt.NDArray[Any], result: npt.NDArray[Any]
+) -> Callable[
+    [npt.NDArray[np.float32]],
+    tuple[
+        npt.NDArray[np.float32],
+        Floatable,
+    ],
+]: ...
+
+
+@overload
+def add_backward(a: ArrayValueType, b: Floatable, result: npt.NDArray[Any]) -> Callable[
+    [npt.NDArray[np.float32]],
+    tuple[
+        npt.NDArray[np.float32],
+        Floatable,
+    ],
+]: ...
 
 
 def add_backward(
