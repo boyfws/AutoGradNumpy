@@ -8,7 +8,6 @@ from src.types import Floatable, GradFnArray, GradFnScalar, NotImplementedType
 
 
 class BaseArray(abc.ABC):
-    _ret_scalar_dtype: Type["BaseScalar"]
     _dtype: Union[Type[np.float16], Type[np.float32], Type[np.float64]]
     prev_1: Optional[Union["BaseScalar", "BaseArray"]]
     prev_2: Optional[Union["BaseScalar", "BaseArray"]]

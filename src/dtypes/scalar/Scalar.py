@@ -1,8 +1,4 @@
-from typing import (
-    Any,
-    Callable,
-    Union,
-)
+from typing import Any, Callable, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -26,7 +22,11 @@ class Scalar(BaseScalar):
     __array_priority__ = 1000
 
     def __init__(self, value: Floatable, requires_grad: bool = False) -> None:
-        self.value = self._dtype(value)
+        converted_value = self._dtype(value)
+        converted_value = cast(
+            Union[np.float16, np.float32, np.float64], converted_value
+        )
+        self.value = converted_value
         self.requires_grad = requires_grad
 
         self.prev_1 = None
@@ -62,11 +62,11 @@ class Scalar(BaseScalar):
             self.grad_fn = EmptyCallable()
 
         if self.prev_1 is not None:
-            self.prev_1._graph_clean_up()
+            self.prev_1._graph_clean_up()  # type: ignore[reportPrivateUsage]
             self.prev_1 = None
 
         if self.prev_2 is not None:
-            self.prev_2._graph_clean_up()
+            self.prev_2._graph_clean_up()  # type: ignore[reportPrivateUsage]
             self.prev_2 = None
 
     def _backward(
@@ -90,11 +90,11 @@ class Scalar(BaseScalar):
 
             if grad1 is not None and self.prev_1 is not None:
                 full_grad1 = grad1 * prev_grad  # type: ignore[operator]
-                self.prev_1._backward(full_grad1)
+                self.prev_1._backward(full_grad1)  # type: ignore[reportPrivateUsage]
 
             if grad2 is not None and self.prev_2 is not None:
                 full_grad2 = grad2 * prev_grad  # type: ignore[operator]
-                self.prev_2._backward(full_grad2)
+                self.prev_2._backward(full_grad2)  # type: ignore[reportPrivateUsage]
 
     @staticmethod
     def reverse_dunder(meth_name: str) -> str:

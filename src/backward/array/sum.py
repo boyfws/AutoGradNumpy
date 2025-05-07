@@ -1,41 +1,37 @@
-from typing import Any, Literal, Union, overload
+from typing import Any, Union, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from src.types import ArrayValueType, GradFnArray, GradFnScalar
+from src.types import ArrayValueType, Floatable, GradFnArray, GradFnScalar, Optional
 
 
 @overload
 def sum_backward(
     value: ArrayValueType,
-    axis: None,
-) -> GradFnScalar: ...
-
-
-@overload
-def sum_backward(
-    value: np.ndarray[tuple[int], Any],
-    axis: Literal[0],
+    result: Floatable,
+    axis: Optional[int] = None,
 ) -> GradFnScalar: ...
 
 
 @overload
 def sum_backward(
     value: ArrayValueType,
-    axis: int,
+    result: npt.NDArray[Any],
+    axis: Optional[int] = None,
 ) -> GradFnArray: ...
 
 
 def sum_backward(
     value: ArrayValueType,
-    axis: Union[int, None],
+    result: Union[npt.NDArray[Any], Floatable],
+    axis: Optional[int] = None,
 ) -> Union[
     GradFnArray,
     GradFnScalar,
 ]:
 
-    if axis is None or (axis == 0 and value.ndim == 1):
+    if not isinstance(result, np.ndarray):
 
         def fn1() -> tuple[npt.NDArray[np.float32], None]:
             return np.ones_like(value, dtype=np.float32), None

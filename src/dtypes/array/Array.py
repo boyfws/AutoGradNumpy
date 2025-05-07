@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -17,11 +17,12 @@ from src.backward.array import (
 from src.dtypes.Base import BaseArray, BaseScalar
 from src.dtypes.EmptyCallable import EmptyCallable
 from src.dtypes.scalar import Float16, Float32, Float64
-from src.types import Floatable
+from src.types import Floatable, GradFnArray
 
 
 class Array(BaseArray):
     __array_priority__ = 1000
+    _ret_scalar_dtype: Union[Type[Float16], Type[Float32], Type[Float64]]
 
     def __init__(
         self,
@@ -70,9 +71,7 @@ class Array(BaseArray):
     ) -> Union[npt.NDArray[Union[np.float16, np.float32, np.float64]], Floatable]:
         return self.value.__getitem__(key)
 
-    def __setitem__(
-        self, key: Any, value: Union[npt.ArrayLike, Floatable]
-    ) -> None:
+    def __setitem__(self, key: Any, value: Union[npt.ArrayLike, Floatable]) -> None:
         self.value.__setitem__(key, value)
 
         self.requires_grad = False
@@ -111,11 +110,11 @@ class Array(BaseArray):
             self.grad_fn = EmptyCallable()
 
         if self.prev_1 is not None:
-            self.prev_1._graph_clean_up()
+            self.prev_1._graph_clean_up()  # type: ignore[reportPrivateUsage]
             self.prev_1 = None
 
         if self.prev_2 is not None:
-            self.prev_2._graph_clean_up()
+            self.prev_2._graph_clean_up()  # type: ignore[reportPrivateUsage]
             self.prev_2 = None
 
     def detach(self) -> "BaseArray":
@@ -131,15 +130,23 @@ class Array(BaseArray):
         a: npt.NDArray[Union[np.float16, np.float32, np.float64]],
         b: Union[npt.NDArray[Any], Floatable, np.float16, np.float32, np.float64],
     ) -> Union[Type[np.float16], Type[np.float32], Type[np.float64]]:
+
+        flag = isinstance(b, np.generic)
+
         if isinstance(b, np.ndarray):
             b_dtype = b.dtype
-            if b_dtype not in (np.float16, np.float32, np.float64):
-                b_dtype = np.float64
-        elif isinstance(b, np.float16):
+            if b_dtype not in (
+                np.dtype(np.float16),
+                np.dtype(np.float32),
+                np.dtype(np.float64),
+            ):
+                b_dtype = np.dtype(np.float64)
+
+        elif flag and (b.dtype == np.float16):
             b_dtype = np.float16
-        elif isinstance(b, np.float32):
+        elif flag and (b.dtype == np.float32):
             b_dtype = np.float32
-        elif isinstance(b, np.float64):
+        elif flag and (b.dtype == np.float64):
             b_dtype = np.float64
         else:
             b_dtype = np.float64
@@ -151,7 +158,14 @@ class Array(BaseArray):
     def _base_operations_wrapper(
         self,
         other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"],
-        fn_getter: Callable,
+        fn_getter: Callable[
+            [
+                Union[Floatable, npt.NDArray[Any]],
+                Union[Floatable, npt.NDArray[Any]],
+                npt.NDArray[Any],
+            ],
+            GradFnArray,
+        ],
         operation_name: str,
     ) -> "BaseArray":
         scalar_flag = isinstance(other, BaseScalar)
@@ -252,7 +266,7 @@ class Array(BaseArray):
             "__rpow__",
         )
 
-    def __eq__(self, other: object) -> Union[bool, npt.NDArray[np.bool_]]:
+    def __eq__(self, other: object) -> Union[bool, npt.NDArray[np.bool_]]:  # type: ignore[reportIncompatibleMethodOverride]
         if isinstance(other, BaseArray):
             return self.data == other.data
         elif isinstance(other, np.ndarray):
@@ -263,12 +277,17 @@ class Array(BaseArray):
     def sum(self, axis: Optional[int] = None) -> Union["BaseScalar", "BaseArray"]:
         value = self.data
         result = value.sum(axis=axis)
-        if axis is None:
+
+        if not isinstance(result, np.ndarray):
+            result = cast(Floatable, result)
+
             result_obj = self._ret_scalar_dtype(
                 result,
                 requires_grad=False,
             )
         else:
+            result = cast(npt.NDArray[Any], result)
+
             result_obj = type(self)(
                 result,
                 dtype=self._dtype,
@@ -280,6 +299,7 @@ class Array(BaseArray):
         grad = sum_backward(
             value,
             axis=axis,
+            result=result,
         )
         result_obj.grad_fn = grad
 

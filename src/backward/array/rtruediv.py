@@ -20,7 +20,7 @@ def rtruediv_backward(
         Union[npt.NDArray[np.float32], Floatable],
     ]:
         ret1, ret2 = result(prev_grad)
-        ret1 = cast(Union[npt.NDArray[np.float32], Floatable], ret1)
+        # ret1 = cast(Union[npt.NDArray[np.float32], Floatable], ret1)
         ret2 = cast(Union[npt.NDArray[np.float32], Floatable], ret2)
         return ret2, ret1
 

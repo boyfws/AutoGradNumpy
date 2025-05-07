@@ -18,11 +18,8 @@ def sub_backward(
         prev_grad: npt.NDArray[np.float32],
     ) -> tuple[npt.NDArray[np.float32], Union[npt.NDArray[np.float32], Floatable]]:
         res = target_fn(prev_grad)
-        if res[1] is not None:
-            ret_1 = -res[1]  # type: ignore[operator]
-            ret_1 = cast(Union[npt.NDArray[np.float32], Floatable], ret_1)
-        else:
-            ret_1 = None
+        ret_1 = -res[1]  # type: ignore[operator]
+        ret_1 = cast(Union[npt.NDArray[np.float32], Floatable], ret_1)
 
         return res[0], ret_1
 
