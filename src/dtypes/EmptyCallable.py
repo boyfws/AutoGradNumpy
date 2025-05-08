@@ -15,6 +15,3 @@ class EmptyCallable:
     def __init__(self):
         if not hasattr(self, "_initialized"):
             self._initialized = True
-
-    def __call__(self) -> tuple[None, None]:
-        return None, None

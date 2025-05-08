@@ -6,6 +6,8 @@ import numpy.typing as npt
 
 from src.types import Floatable, GradFnArray, GradFnScalar, NotImplementedType
 
+from .EmptyCallable import EmptyCallable
+
 
 class BaseArray(abc.ABC):
     _dtype: Union[Type[np.float16], Type[np.float32], Type[np.float64]]
@@ -14,7 +16,9 @@ class BaseArray(abc.ABC):
 
     value: npt.NDArray[Union[np.float16, np.float32, np.float64]]
     grad: Optional[npt.NDArray[np.float32]]
-    grad_fn: Optional[GradFnArray]
+    grad_fn: Optional[Union[GradFnArray, EmptyCallable]]
+
+    requires_grad: bool
 
     @abc.abstractmethod
     def __init__(
@@ -55,7 +59,8 @@ class BaseScalar(abc.ABC):
     prev_1: Optional[Union["BaseScalar", "BaseArray"]]
     prev_2: Optional[Union["BaseScalar", "BaseArray"]]
     grad: Optional[Floatable]
-    grad_fn: Optional[GradFnScalar]
+    grad_fn: Optional[Union[GradFnScalar, EmptyCallable]]
+    requires_grad: bool
 
     @abc.abstractmethod
     def item(self) -> Union[np.float16, np.float32, np.float64]: ...

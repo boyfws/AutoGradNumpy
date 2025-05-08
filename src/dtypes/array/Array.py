@@ -66,27 +66,23 @@ class Array(BaseArray):
     def data(self) -> npt.NDArray[Any]:
         return self.value.copy()
 
+    @property
+    def is_leaf(self) -> bool:
+        return self.grad_fn is None
+
     def __getitem__(
         self, key: Any
     ) -> Union[npt.NDArray[Union[np.float16, np.float32, np.float64]], Floatable]:
         return self.value.__getitem__(key)
 
-    def __setitem__(self, key: Any, value: Union[npt.ArrayLike, Floatable]) -> None:
-        self.value.__setitem__(key, value)
-
-        self.requires_grad = False
-
-        if self.grad is not None:
-            self.grad = np.zeros_like(self.value, dtype=np.float32)
-
     def _backward(self, prev_grad: npt.NDArray[np.float32]) -> None:
-        if self.requires_grad:
+        if self.requires_grad and self.is_leaf:
             if self.grad is None:
                 self.grad = prev_grad
             else:
                 self.grad += prev_grad
 
-        if self.grad_fn is not None:
+        if self.grad_fn is not None and self.requires_grad:
 
             if isinstance(self.grad_fn, EmptyCallable):
                 raise RuntimeError(
@@ -96,10 +92,10 @@ class Array(BaseArray):
             full_grad1, full_grad2 = self.grad_fn(prev_grad)
 
             if full_grad1 is not None and self.prev_1 is not None:
-                self.prev_1._backward(full_grad1)
+                self.prev_1._backward(full_grad1)  # type: ignore[reportPrivateUsage]
 
             if full_grad2 is not None and self.prev_2 is not None:
-                self.prev_2._backward(full_grad2)
+                self.prev_2._backward(full_grad2)  # type: ignore[reportPrivateUsage]
 
     def _zero_grad(self) -> None:
         if self.grad is not None:
@@ -172,10 +168,13 @@ class Array(BaseArray):
         array_flag = isinstance(other, BaseArray)
 
         value = self.data
+        req_grad = self.requires_grad
         if scalar_flag:
             sec = other.item()
+            req_grad = req_grad or other.requires_grad
         elif array_flag:
             sec = other.data
+            req_grad = req_grad or other.requires_grad
         else:
             sec = other
 
@@ -184,23 +183,23 @@ class Array(BaseArray):
         result_dtype = self._promote_type(value, sec)
         result_obj = type(self)(
             result,
-            requires_grad=False,
+            requires_grad=req_grad,
             dtype=result_dtype,
         )
+        if req_grad:
+            fn = fn_getter(value, sec, result.copy())
+            result_obj.grad_fn = fn
 
-        fn = fn_getter(self.value, sec, result)
-        result_obj.grad_fn = fn
-
-        result_obj.prev_1 = self
-        if scalar_flag or array_flag:
-            result_obj.prev_2 = other
+            result_obj.prev_1 = self
+            if scalar_flag or array_flag:
+                result_obj.prev_2 = other
 
         return result_obj
 
     def __neg__(self) -> "BaseArray":
         result_obj = type(self)(
             -self.value,
-            requires_grad=False,
+            requires_grad=self.requires_grad,
             dtype=self._dtype,
         )
         result_obj.grad_fn = neg_backward()
@@ -283,7 +282,7 @@ class Array(BaseArray):
 
             result_obj = self._ret_scalar_dtype(
                 result,
-                requires_grad=False,
+                requires_grad=self.requires_grad,
             )
         else:
             result = cast(npt.NDArray[Any], result)
@@ -291,7 +290,7 @@ class Array(BaseArray):
             result_obj = type(self)(
                 result,
                 dtype=self._dtype,
-                requires_grad=False,
+                requires_grad=self.requires_grad,
             )
 
         result_obj.prev_1 = self

@@ -53,6 +53,10 @@ class Scalar(BaseScalar):
     def data(self) -> Union[np.float16, np.float32, np.float64]:
         return self.item()
 
+    @property
+    def is_leaf(self) -> bool:
+        return self.grad_fn is None
+
     def _zero_grad(self) -> None:
         if self.grad is not None:
             self.grad = 0
@@ -73,13 +77,13 @@ class Scalar(BaseScalar):
         self,
         prev_grad: Floatable,
     ) -> None:
-        if self.requires_grad:
+        if self.requires_grad and self.is_leaf:
             if self.grad is None:
                 self.grad = prev_grad  # type: ignore[operator]
             else:
                 self.grad += prev_grad  # type: ignore[operator]
 
-        if self.grad_fn is not None:
+        if self.grad_fn is not None and self.requires_grad:
 
             if isinstance(self.grad_fn, EmptyCallable):
                 raise RuntimeError(
@@ -150,26 +154,30 @@ class Scalar(BaseScalar):
             return block
 
         flag = isinstance(other, BaseScalar)
-
+        req_grad = self.requires_grad
         if flag:
             sec = other.item()
+            req_grad = req_grad or other.requires_grad
         else:
             sec = other
 
         result = value.__getattribute__(operation_name)(sec)
-        fn = fn_getter(value, sec, result)
 
-        result_obj = type(self)(result, requires_grad=False)
-        result_obj.grad_fn = fn
+        result_obj = type(self)(result, requires_grad=req_grad)
 
-        result_obj.prev_1 = self
-        if flag:
-            result_obj.prev_2 = other
+        if req_grad:
+            fn = fn_getter(value, sec, result)
+
+            result_obj.grad_fn = fn
+
+            result_obj.prev_1 = self
+            if flag:
+                result_obj.prev_2 = other
 
         return result_obj
 
     def __neg__(self) -> "BaseScalar":
-        result_obj = type(self)(-self.data, requires_grad=False)
+        result_obj = type(self)(-self.data, requires_grad=self.requires_grad)
         result_obj.grad_fn = neg_backward()
         result_obj.prev_1 = self
 
