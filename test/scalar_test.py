@@ -94,7 +94,7 @@ def test_rmul(x_1, x_2) -> None:
     a = Float32(x_2)
     result = x_1 * a
     assert isinstance(result, Float32)
-    assert result.value == x_1 * x_2
+    assert result.item() == x_1 * x_2
 
 
 @pytest.mark.parametrize(
@@ -113,7 +113,7 @@ def test_rtruediv(x_1, x_2) -> None:
     a = Float32(x_2)
     result = x_1 / a  # Вызывает __rtruediv__
     assert isinstance(result, Float32)
-    assert result.value == pytest.approx(x_1 / x_2)
+    assert result.item() == pytest.approx(x_1 / x_2)
 
 
 def test_negation_operation() -> None:

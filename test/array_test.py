@@ -347,3 +347,30 @@ def test_str(array):
     array = array.astype(np.float32)
     ar = Array(array)
     assert str(ar) == str(array)
+
+
+def test_empty_zero_grad():
+    a = Array(np.array([1, 2, 3]), requires_grad=True)
+    a._zero_grad()
+    assert a._grad is None
+
+
+def test_not_empty_zero_grad():
+    a = Array(np.array([1, 2, 3]), requires_grad=True)
+    a.sum().backward()
+    a._zero_grad()
+
+    assert a._grad is not None
+    assert np.allclose(np.zeros_like(a.data), a._grad)
+
+
+def test_eq():
+    a = Array(np.array([1, 2, 3]), requires_grad=False)
+    b = Array(np.array([1, 2, 3]), requires_grad=False)
+    c = Array(np.array([2, 2, 3]), requires_grad=False)
+
+    assert all(a == a)
+    assert all(c == c)
+    assert all(a == b)
+    assert any(c != b)
+    assert a != 2

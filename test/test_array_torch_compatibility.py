@@ -20,6 +20,8 @@ def compare_tensor_ops(fn_arr, fn_torch, name=""):
     else:
         arr_res.backward()
 
+    assert arr_res._grad is None
+
     assert arr_res.requires_grad
     assert not arr_res.is_leaf
 
@@ -355,3 +357,22 @@ def test_requires_grad2(req_g1):
     assert a_t.is_leaf == True
 
 
+@pytest.mark.parametrize("req_g1", [
+    True,
+    False,
+])
+def test_requires_grad3(req_g1):
+    array1 = np.array([1, 2, 4]).astype(np.float32)
+
+    a_ar = Array(array1, requires_grad=req_g1)
+    c_ar = a_ar.sum()
+
+    a_t = torch.tensor(array1, requires_grad=req_g1)
+    c_t = a_t.sum()
+
+    assert c_t.requires_grad == c_ar.requires_grad
+    assert c_t.requires_grad == req_g1
+    assert c_t.is_leaf == c_ar.is_leaf
+    assert c_t.is_leaf == (not req_g1)
+    assert a_t.is_leaf == a_ar.is_leaf
+    assert a_t.is_leaf == True

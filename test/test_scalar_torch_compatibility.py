@@ -22,6 +22,7 @@ def compare_scalar_ops(fn_float, fn_torch, name=""):
 
     assert f_res.requires_grad
     assert not f_res.is_leaf
+    assert f_res.grad is None
 
     f_out = f_res.item()
     f_grads = [inp.grad for inp in f_inputs]
@@ -239,6 +240,27 @@ def test_requires_grad2(req_g1):
 
     a_t = torch.tensor([a], requires_grad=req_g1)
     c_t = a_t + 2
+
+    assert c_t.requires_grad == c_ar.requires_grad
+    assert c_t.requires_grad == req_g1
+    assert c_t.is_leaf == c_ar.is_leaf
+    assert c_t.is_leaf == (not req_g1)
+    assert a_t.is_leaf == a_ar.is_leaf
+    assert a_t.is_leaf == True
+
+
+@pytest.mark.parametrize("req_g1", [
+    True,
+    False,
+])
+def test_requires_grad2(req_g1):
+    a = 5.0
+
+    a_ar = Float32(a, requires_grad=req_g1)
+    c_ar = -a_ar
+
+    a_t = torch.tensor([a], requires_grad=req_g1)
+    c_t = -a_t
 
     assert c_t.requires_grad == c_ar.requires_grad
     assert c_t.requires_grad == req_g1
