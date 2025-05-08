@@ -56,7 +56,7 @@ def test_repeat_backward_array():
     s = x.sum()
     s.backward()
     first = x.grad.copy()
-    x.grad = None
+    x._zero_grad()
     try:
         s.backward()
         assert np.allclose(x.grad, first)

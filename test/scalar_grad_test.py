@@ -387,11 +387,9 @@ def test_detach_multiple_calls():
 
 def test_multiple_usage():
     "Test the case where single object is used twice"
-    a = Float32(2)
-    a.requires_grad = True
+    a = Float32(2, requires_grad=True)
 
-    b = Float32(1)
-    b.requires_grad = True
+    b = Float32(1, requires_grad=True)
 
     c = a + b
 
@@ -404,11 +402,9 @@ def test_multiple_usage():
 
 
 def test_unused_grad():
-    a = Float32(2)
-    a.requires_grad = True
+    a = Float32(2, requires_grad=True)
 
-    b = Float32(1)
-    b.requires_grad = True
+    b = Float32(1, requires_grad=True)
 
     c = a + b
 
@@ -424,9 +420,7 @@ def test_unused_grad():
 
 
 def test_single_scalar_grad():
-    a = Float32(2)
-
-    a.requires_grad = True
+    a = Float32(2, requires_grad=True)
 
     c = a + a
 
@@ -450,7 +444,6 @@ def test_backward_without_retain_graph():
     c = a + b
     d = c * c  # d = (a + b)^2
 
-    print(d.grad_fn)
     d.backward()
 
     # Second backward without retain_graph
