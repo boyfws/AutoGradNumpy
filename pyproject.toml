@@ -26,3 +26,7 @@ skip = ["test", ".venv", "venv", ".idea"]
 line_length = 88
 known_first_party = ["src"]
 known_third_party = ["numpy"]
+
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing --cov-fail-under=98"
