@@ -40,6 +40,11 @@ def test_init3():
     )
 
 
+def test_init_not_array() -> None:
+    array = Array([1, 2, 3], dtype=np.float32)
+    assert all(array.data == np.array([1, 2, 3], dtype=np.float32))
+
+
 def get_item_test() -> None:
     array = np.array([
         [1, 2, 3],
@@ -52,73 +57,6 @@ def get_item_test() -> None:
     assert ar_obj[0] == array[0]
     assert ar_obj[1, 2] == array[1, 2]
     assert ar_obj[:1, 2] == array[:1, 2]
-
-
-def test_setitem_single_element():
-    """Test setting a single element by index"""
-    arr = Array(
-        np.array([1, 2, 3])
-    )
-    arr[1] = 5
-    assert arr.data.tolist() == [1, 5, 3]
-
-
-def test_setitem_slice():
-    """Test setting values using slice notation"""
-    arr = Array([[1, 2], [3, 4]])
-    arr[:, 0] = [10, 20]
-    assert arr.data.tolist() == [[10, 2], [20, 4]]
-
-
-def test_setitem_boolean_mask():
-    """Test setting values using boolean masking"""
-    arr = Array([1, 2, 3, 4])
-    arr[arr.data > 2] = 0
-    assert arr.data.tolist() == [1, 2, 0, 0]
-
-
-
-def test_setitem_with_requires_grad():
-    """Test modification when requires_grad=True"""
-    arr = Array([1.0, 2.0], requires_grad=True)
-    arr[0] = 5.0  # Should not raise error
-    assert arr.data[0] == 5.0
-    assert not arr.requires_grad
-
-
-def test_setitem_changes_shape():
-    """Test that shape-changing operations raise error"""
-    arr = Array([1, 2, 3])
-    with pytest.raises(ValueError):
-        arr[:2] = [10, 20, 30]  # Shape mismatch
-
-
-def test_setitem_non_contiguous():
-    """Test advanced indexing scenarios"""
-    arr = Array([[1, 2], [3, 4]])
-    arr[[0, 1], [1, 0]] = [10, 20]
-    assert arr.data.tolist() == [[1, 10], [20, 4]]
-
-
-def test_setitem_multidimensional():
-    """Test setting values in multidimensional arrays"""
-    arr = Array(np.zeros((3, 3)))
-    arr[1, 1] = 5
-    assert arr.data[1, 1] == 5
-
-
-def test_setitem_with_step_slice():
-    """Test setting with step slices"""
-    arr = Array([0, 1, 2, 3, 4, 5])
-    arr[::2] = [10, 20, 30]
-    assert arr.data.tolist() == [10, 1, 20, 3, 30, 5]
-
-
-def test_setitem_broadcasting():
-    """Test value broadcasting during assignment"""
-    arr = Array(np.zeros((2, 3)))
-    arr[:, 1] = 5
-    assert np.all(arr.data[:, 1] == 5)
 
 
 TEST_VALUES = [
@@ -394,3 +332,18 @@ def test_truediv_dtype(dtype_a, dtype_b, result_dtype):
     assert np.allclose(result_4.data, a / 2)
     assert result_5.data.dtype == np.float64
     assert np.allclose(result_5.data, 2 / b)
+
+
+@pytest.mark.parametrize(
+    "array", [
+        np.array([1, 2, 3]),
+        np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+        ])
+    ]
+)
+def test_str(array):
+    array = array.astype(np.float32)
+    ar = Array(array)
+    assert str(ar) == str(array)

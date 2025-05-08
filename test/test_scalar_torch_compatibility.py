@@ -19,12 +19,20 @@ def compare_scalar_ops(fn_float, fn_torch, name=""):
     # Float32
     f_res, f_inputs = fn_float()
     f_res.backward()
+
+    assert f_res.requires_grad
+    assert not f_res.is_leaf
+
     f_out = f_res.item()
     f_grads = [inp.grad for inp in f_inputs]
 
     # torch
     t_res, t_inputs = fn_torch()
     t_res.backward()
+
+    assert t_res.requires_grad
+    assert not t_res.is_leaf
+
     t_out = t_res.item()
     t_grads = [inp.grad.item() for inp in t_inputs]
 
@@ -171,3 +179,70 @@ def test_chained_ops_compat():
         expr = (a + b) * (a - b) / (a * 2.0 + b / 2.0)
         return expr, [a, b]
     compare_scalar_ops(fn_f, fn_t, name="chained_ops")
+
+
+@pytest.mark.parametrize("base,exp", [
+    (0, 0),
+    (0, 1),
+    (0, 1.5),
+    (1, 0),
+    (3, 0),
+])
+def test_pow_edge_cases(base,exp):
+    def fn_f():
+        a = Float32(base, requires_grad=True)
+        b = Float32(exp, requires_grad=True)
+        expr = a ** b
+        return expr, [a, b]
+    def fn_t():
+        a = torch.tensor(base, dtype=torch.float32, requires_grad=True)
+        b = torch.tensor(exp, dtype=torch.float32, requires_grad=True)
+        expr = a ** b
+        return expr, [a, b]
+    compare_scalar_ops(fn_f, fn_t, name="pow_edge_cases")
+
+
+@pytest.mark.parametrize("req_g1, req_g2", [
+    (True, False),
+    (False, True),
+    (True, True),
+    (False, False),
+])
+def test_requires_grad(req_g1, req_g2):
+    a = 1.0
+    b = 2.0
+
+    a_ar = Float32(a, requires_grad=req_g1)
+    b_ar = Float32(b, requires_grad=req_g2)
+    c_ar = a_ar + b_ar
+
+    a_t = torch.tensor([a], requires_grad=req_g1)
+    b_t = torch.tensor([b], requires_grad=req_g2)
+    c_t = a_t + b_t
+
+    assert c_t.requires_grad == c_ar.requires_grad
+    assert c_t.requires_grad == (req_g1 or req_g2)
+    assert c_t.is_leaf == c_ar.is_leaf
+    assert c_t.is_leaf == (not (req_g1 or req_g2))
+    assert a_t.is_leaf == a_ar.is_leaf == True
+
+
+@pytest.mark.parametrize("req_g1", [
+    True,
+    False,
+])
+def test_requires_grad2(req_g1):
+    a = 5.0
+
+    a_ar = Float32(a, requires_grad=req_g1)
+    c_ar = a_ar + 2
+
+    a_t = torch.tensor([a], requires_grad=req_g1)
+    c_t = a_t + 2
+
+    assert c_t.requires_grad == c_ar.requires_grad
+    assert c_t.requires_grad == req_g1
+    assert c_t.is_leaf == c_ar.is_leaf
+    assert c_t.is_leaf == (not req_g1)
+    assert a_t.is_leaf == a_ar.is_leaf
+    assert a_t.is_leaf == True
