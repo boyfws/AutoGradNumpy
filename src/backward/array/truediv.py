@@ -55,7 +55,16 @@ def truediv_backward(
     a: Union[npt.NDArray[NumericDtypes], Floatable],
     b: Union[npt.NDArray[NumericDtypes], Floatable],
     result: npt.NDArray[np.float_],
-) -> Union[GradFnArray, Callable[[ArGradType], tuple[Floatable, ArGradType,]]]:
+) -> Union[
+    GradFnArray,
+    Callable[
+        [ArGradType],
+        tuple[
+            Floatable,
+            ArGradType,
+        ],
+    ],
+]:
 
     a_array_flag = isinstance(a, np.ndarray)
     b_array_flag = isinstance(b, np.ndarray)
@@ -78,13 +87,40 @@ def truediv_backward(
         return grad_a, grad_b
 
     if a_array_flag and b_array_flag:
-        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType,]], fn)
+        return cast(
+            Callable[
+                [ArGradType],
+                tuple[
+                    ArGradType,
+                    ArGradType,
+                ],
+            ],
+            fn,
+        )
 
     elif a_array_flag:
-        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable,]], fn)
+        return cast(
+            Callable[
+                [ArGradType],
+                tuple[
+                    ArGradType,
+                    Floatable,
+                ],
+            ],
+            fn,
+        )
 
     elif b_array_flag:
-        return cast(Callable[[ArGradType], tuple[Floatable, ArGradType,]], fn)
+        return cast(
+            Callable[
+                [ArGradType],
+                tuple[
+                    Floatable,
+                    ArGradType,
+                ],
+            ],
+            fn,
+        )
 
     else:
         raise ValueError("Wrong input")

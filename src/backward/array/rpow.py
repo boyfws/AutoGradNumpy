@@ -1,4 +1,4 @@
-from typing import Callable, Union, overload, cast
+from typing import Callable, Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import NotImplementedType
-from typing import Any, TYPE_CHECKING, Callable, Sequence, SupportsIndex, Union
+from typing import TYPE_CHECKING, Any, Callable, Sequence, SupportsIndex, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -76,13 +76,7 @@ GradFnScalar = Union[
             None,
         ],
     ],
-    Callable[
-        [],
-        tuple[
-            Floatable,
-            None
-        ]
-    ]
+    Callable[[], tuple[Floatable, None]],
 ]
 
 # -------------------- Common types --------------------
