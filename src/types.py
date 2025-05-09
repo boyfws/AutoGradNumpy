@@ -1,29 +1,75 @@
+from __future__ import annotations
+
 from types import NotImplementedType
-from typing import Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Sequence, SupportsIndex, Union
 
 import numpy as np
 import numpy.typing as npt
 
-Floatable = Union[int, float, np.generic]
+if TYPE_CHECKING:
+    from src.dtypes.Base import BaseArray, BaseScalar
 
-GradEl = Union[Floatable, npt.NDArray[np.float32]]
+Floatable = Union[int, float, np.float_]
 
-GradFnScalar = Callable[
-    [],
-    tuple[
-        GradEl,
-        Optional[GradEl],
-    ],
+NotImplementedType = NotImplementedType
+
+# -------------------- Types for Array --------------------
+ArGradType = npt.NDArray[np.float32]
+
+NpIndicesTypes = Union[
+    slice,
+    None,
+    bool,
+    SupportsIndex,
+    npt.NDArray[np.integer],
+    npt.NDArray[np.bool_],
+    Sequence[bool],
+    Sequence[int],
+    Sequence[slice],
 ]
 
-GradFnArray = Callable[
-    [npt.NDArray[np.float32]],
-    tuple[
-        GradEl,
-        Optional[GradEl],
+
+NumericDtypes = Union[
+    np.bool_,
+    np.int8,
+    np.int16,
+    np.int32,
+    np.int64,
+    np.uint8,
+    np.uint16,
+    np.uint32,
+    np.uint64,
+    np.float16,
+    np.float32,
+    np.float64,
+]
+
+GradFnArray = Union[
+    Callable[[ArGradType], tuple[ArGradType, Floatable]],
+    Callable[
+        [ArGradType],
+        tuple[
+            ArGradType,
+            ArGradType,
+        ],
     ],
 ]
 
 ArrayValueType = npt.NDArray[Union[np.float16, np.float32, np.float64]]
 
-NotImplementedType = NotImplementedType
+# -------------------- Types for Scalar --------------------
+
+
+GradFnScalar = Callable[
+    [],
+    tuple[
+        Floatable,
+        Floatable,
+    ],
+]
+
+# -------------------- Common types --------------------
+
+BaseOperationsType = Union[
+    Floatable, npt.NDArray[NumericDtypes], "BaseScalar", "BaseArray"
+]
