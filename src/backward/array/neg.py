@@ -1,12 +1,9 @@
-import numpy as np
-import numpy.typing as npt
-
-from src.types import GradFnArray
+from src.types import ArGradType, GradFnArray
 
 
 def neg_backward() -> GradFnArray:
 
-    def fn(prev_grad: npt.NDArray[np.float32]) -> tuple[npt.NDArray[np.float32], None]:
+    def fn(prev_grad: ArGradType) -> tuple[ArGradType, None]:
         return -prev_grad.copy(), None
 
     return fn

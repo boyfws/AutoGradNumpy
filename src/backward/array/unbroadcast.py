@@ -1,24 +1,19 @@
 from typing import Literal, Optional, Union, overload
 
-import numpy as np
-import numpy.typing as npt
-
-from src.types import Floatable
+from src.types import ArGradType, Floatable
 
 
 @overload
-def unbroadcast(grad: npt.NDArray[np.float32], shape: Literal[None]) -> Floatable: ...
+def unbroadcast(grad: ArGradType, shape: Literal[None]) -> Floatable: ...
 
 
 @overload
-def unbroadcast(
-    grad: npt.NDArray[np.float32], shape: tuple[int, ...]
-) -> npt.NDArray[np.float32]: ...
+def unbroadcast(grad: ArGradType, shape: tuple[int, ...]) -> ArGradType: ...
 
 
 def unbroadcast(
-    grad: npt.NDArray[np.float32], shape: Optional[tuple[int, ...]] = None
-) -> Union[npt.NDArray[np.float32], Floatable]:
+    grad: ArGradType, shape: Optional[tuple[int, ...]] = None
+) -> Union[ArGradType, Floatable]:
     """
     Reduce `grad` back to `shape` by summing over broadcasted dimensions.
     """

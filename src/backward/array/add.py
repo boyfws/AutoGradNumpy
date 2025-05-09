@@ -1,37 +1,41 @@
-from typing import Any, Callable, Union, overload
+from typing import Callable, Union, overload, cast
 
 import numpy as np
 import numpy.typing as npt
 
-from src.types import ArrayValueType, Floatable, GradFnArray
+from src.types import ArGradType, ArrayValueType, Floatable, GradFnArray, NumericDtypes
 
 from .unbroadcast import unbroadcast
 
 
 @overload
 def add_backward(
-    a: ArrayValueType, b: npt.NDArray[Any], result: npt.NDArray[Any]
+    a: ArrayValueType, b: npt.NDArray[NumericDtypes], result: npt.NDArray[np.float_]
 ) -> Callable[
-    [npt.NDArray[np.float32]],
+    [ArGradType],
     tuple[
-        npt.NDArray[np.float32],
-        Floatable,
+        ArGradType,
+        ArGradType,
     ],
 ]: ...
 
 
 @overload
-def add_backward(a: ArrayValueType, b: Floatable, result: npt.NDArray[Any]) -> Callable[
-    [npt.NDArray[np.float32]],
+def add_backward(
+    a: ArrayValueType, b: Floatable, result: npt.NDArray[np.float_]
+) -> Callable[
+    [ArGradType],
     tuple[
-        npt.NDArray[np.float32],
+        ArGradType,
         Floatable,
     ],
 ]: ...
 
 
 def add_backward(
-    a: ArrayValueType, b: Union[npt.NDArray[Any], Floatable], result: npt.NDArray[Any]
+    a: ArrayValueType,
+    b: Union[npt.NDArray[NumericDtypes], Floatable],
+    result: npt.NDArray[np.float_],
 ) -> GradFnArray:
 
     a_shape = a.shape
@@ -40,12 +44,15 @@ def add_backward(
     b_shape = b.shape if b_is_array else None
 
     def fn(
-        prev_grad: npt.NDArray[np.float32],
-    ) -> tuple[npt.NDArray[np.float32], Union[npt.NDArray[np.float32], Floatable]]:
+        prev_grad: ArGradType,
+    ) -> tuple[ArGradType, Union[ArGradType, Floatable]]:
 
         grad_a = unbroadcast(prev_grad, a_shape)
         grad_b = unbroadcast(prev_grad, b_shape)
 
         return grad_a, grad_b
 
-    return fn
+    if b_is_array:
+        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType]], fn)
+    else:
+        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable]], fn)

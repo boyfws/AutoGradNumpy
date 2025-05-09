@@ -1,27 +1,55 @@
-from typing import Any, Union, cast
+from typing import Callable, Union, overload, cast
 
 import numpy as np
 import numpy.typing as npt
 
-from src.types import ArrayValueType, Floatable, GradFnArray
+from src.types import ArGradType, ArrayValueType, Floatable, GradFnArray, NumericDtypes
 
 from .pow import pow_backward
 
 
+@overload
 def rpow_backward(
-    a: ArrayValueType, b: Union[Floatable, npt.NDArray[Any]], c: npt.NDArray[Any]
+    a: ArrayValueType, b: Floatable, c: npt.NDArray[np.float_]
+) -> Callable[
+    [ArGradType],
+    tuple[
+        ArGradType,
+        Floatable,
+    ],
+]: ...
+
+
+@overload
+def rpow_backward(
+    a: ArrayValueType, b: npt.NDArray[NumericDtypes], c: npt.NDArray[np.float_]
+) -> Callable[
+    [ArGradType],
+    tuple[
+        ArGradType,
+        ArGradType,
+    ],
+]: ...
+
+
+def rpow_backward(
+    a: ArrayValueType,
+    b: Union[Floatable, npt.NDArray[NumericDtypes]],
+    c: npt.NDArray[np.float_],
 ) -> GradFnArray:
+    b_is_array = isinstance(b, np.ndarray)
     result = pow_backward(b, a, c)
 
     def fn(
-        prev_grad: npt.NDArray[np.float32],
+        prev_grad: ArGradType,
     ) -> tuple[
-        Union[npt.NDArray[np.float32], Floatable],
-        Union[npt.NDArray[np.float32], Floatable],
+        ArGradType,
+        Union[ArGradType, Floatable],
     ]:
         ret1, ret2 = result(prev_grad)
-        # ret1 = cast(Union[npt.NDArray[np.float32], Floatable], ret1)
-        ret2 = cast(Union[npt.NDArray[np.float32], Floatable], ret2)
         return ret2, ret1
 
-    return fn
+    if b_is_array:
+        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType]], fn)
+    else:
+        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable]], fn)

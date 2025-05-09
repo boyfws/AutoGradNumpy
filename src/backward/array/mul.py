@@ -1,48 +1,51 @@
-from typing import Any, Callable, Union, cast, overload
+from typing import Callable, Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt
 
-from src.types import ArrayValueType, Floatable, GradFnArray
+from src.types import ArGradType, ArrayValueType, Floatable, GradFnArray, NumericDtypes
 
 from .unbroadcast import unbroadcast
 
 
 @overload
 def mul_backward(
-    a: ArrayValueType, b: npt.NDArray[Any], result: npt.NDArray[Any]
+    a: ArrayValueType, b: npt.NDArray[NumericDtypes], result: npt.NDArray[np.float_]
 ) -> Callable[
-    [npt.NDArray[np.float32]],
+    [ArGradType],
     tuple[
-        npt.NDArray[np.float32],
-        Floatable,
+        ArGradType,
+        ArGradType,
     ],
 ]: ...
 
 
 @overload
-def mul_backward(a: ArrayValueType, b: Floatable, result: npt.NDArray[Any]) -> Callable[
-    [npt.NDArray[np.float32]],
+def mul_backward(
+    a: ArrayValueType, b: Floatable, result: npt.NDArray[np.float_]
+) -> Callable[
+    [ArGradType],
     tuple[
-        npt.NDArray[np.float32],
+        ArGradType,
         Floatable,
     ],
 ]: ...
 
 
 def mul_backward(
-    a: ArrayValueType, b: Union[npt.NDArray[Any], Floatable], result: npt.NDArray[Any]
+    a: ArrayValueType,
+    b: Union[npt.NDArray[NumericDtypes], Floatable],
+    result: npt.NDArray[np.float_],
 ) -> GradFnArray:
     a_shape = a.shape
     b_is_array = isinstance(b, np.ndarray)
     b_shape = b.shape if b_is_array else None
 
-    def fn(prev_grad: npt.NDArray[np.float32]) -> tuple[
-        npt.NDArray[np.float32],
-        Union[npt.NDArray[np.float32], Floatable],
+    def fn(prev_grad: ArGradType) -> tuple[
+        ArGradType,
+        Union[ArGradType, Floatable],
     ]:
         grad_a_raw = (prev_grad * b).astype(np.float32)  # type: ignore[operator]
-        grad_a_raw = cast(npt.NDArray[np.float32], grad_a_raw)
         grad_a = unbroadcast(grad_a_raw, a_shape)
 
         grad_b_raw = (prev_grad * a).astype(np.float32)  # type: ignore[operator]
@@ -50,4 +53,7 @@ def mul_backward(
 
         return grad_a, grad_b
 
-    return fn
+    if b_is_array:
+        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType]], fn)
+    else:
+        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable]], fn)

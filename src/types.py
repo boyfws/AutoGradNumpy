@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import NotImplementedType
-from typing import TYPE_CHECKING, Callable, Sequence, SupportsIndex, Union
+from typing import Any, TYPE_CHECKING, Callable, Sequence, SupportsIndex, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -21,7 +21,7 @@ NpIndicesTypes = Union[
     None,
     bool,
     SupportsIndex,
-    npt.NDArray[np.integer],
+    npt.NDArray[np.integer[Any]],
     npt.NDArray[np.bool_],
     Sequence[bool],
     Sequence[int],
@@ -53,6 +53,7 @@ GradFnArray = Union[
             ArGradType,
         ],
     ],
+    Callable[[ArGradType], tuple[ArGradType, None]],
 ]
 
 ArrayValueType = npt.NDArray[Union[np.float16, np.float32, np.float64]]
@@ -60,12 +61,28 @@ ArrayValueType = npt.NDArray[Union[np.float16, np.float32, np.float64]]
 # -------------------- Types for Scalar --------------------
 
 
-GradFnScalar = Callable[
-    [],
-    tuple[
-        Floatable,
-        Floatable,
+GradFnScalar = Union[
+    Callable[
+        [],
+        tuple[
+            Floatable,
+            Floatable,
+        ],
     ],
+    Callable[
+        [],
+        tuple[
+            ArGradType,
+            None,
+        ],
+    ],
+    Callable[
+        [],
+        tuple[
+            Floatable,
+            None
+        ]
+    ]
 ]
 
 # -------------------- Common types --------------------
