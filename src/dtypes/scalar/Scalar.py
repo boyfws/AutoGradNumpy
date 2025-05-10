@@ -1,4 +1,4 @@
-from typing import Any, Callable, Union, cast
+from typing import Callable, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -15,7 +15,7 @@ from src.backward.scalar import (
 )
 from src.dtypes.Base import BaseArray, BaseScalar
 from src.dtypes.EmptyCallable import EmptyCallable
-from src.types import Floatable, GradFnScalar, NotImplementedType
+from src.types import Floatable, GradFnScalar, NotImplementedType, BaseOperationsType, NumericDtypes
 
 
 class Scalar(BaseScalar):
@@ -23,20 +23,17 @@ class Scalar(BaseScalar):
 
     def __init__(self, value: Floatable, requires_grad: bool = False) -> None:
         converted_value = self._dtype(value)
-        converted_value = cast(
-            Union[np.float16, np.float32, np.float64], converted_value
-        )
-        self.value = converted_value
-        self.requires_grad = requires_grad
+        self._value = converted_value
+        self._requires_grad = requires_grad
 
-        self.prev_1 = None
-        self.prev_2 = None
-        self.grad = None
-        self.grad_fn = None
+        self._prev_1 = None
+        self._prev_2 = None
+        self._grad = None
+        self._grad_fn = None
 
     @staticmethod
     def _array_trigger(
-        other: Union[Floatable, npt.NDArray[Any], "BaseScalar", "BaseArray"],
+        other: BaseOperationsType,
     ) -> Union[NotImplementedType, None]:
         if isinstance(other, BaseArray):
             return NotImplemented
@@ -44,10 +41,10 @@ class Scalar(BaseScalar):
         return None
 
     def __str__(self) -> str:
-        return str(self.value)
+        return str(self._value)
 
     def item(self) -> Union[np.float16, np.float32, np.float64]:
-        return self.value
+        return self._value
 
     @property
     def data(self) -> Union[np.float16, np.float32, np.float64]:
@@ -55,53 +52,60 @@ class Scalar(BaseScalar):
 
     @property
     def is_leaf(self) -> bool:
-        return self.grad_fn is None
+        return self._grad_fn is None
+
+    @property
+    def grad(self) -> Union[Floatable, None]:
+        return self._grad
+
+    @property
+    def requires_grad(self) -> bool:
+        return self._requires_grad
 
     def _zero_grad(self) -> None:
-        if self.grad is not None:
-            self.grad = 0
+        if self._grad is not None:
+            self._grad = 0
 
     def _graph_clean_up(self) -> None:
-        if self.grad_fn is not None:
-            self.grad_fn = EmptyCallable()
+        if self._grad_fn is not None:
+            self._grad_fn = EmptyCallable()
 
-        if self.prev_1 is not None:
-            self.prev_1._graph_clean_up()  # type: ignore[reportPrivateUsage]
-            self.prev_1 = None
+        if self._prev_1 is not None:
+            self._prev_1._graph_clean_up()  # type: ignore[reportPrivateUsage]
+            self._prev_1 = None
 
-        if self.prev_2 is not None:
-            self.prev_2._graph_clean_up()  # type: ignore[reportPrivateUsage]
-            self.prev_2 = None
+        if self._prev_2 is not None:
+            self._prev_2._graph_clean_up()  # type: ignore[reportPrivateUsage]
+            self._prev_2 = None
 
     def _backward(
         self,
         prev_grad: Floatable,
     ) -> None:
-        if self.requires_grad and self.is_leaf:
-            if self.grad is None:
-                self.grad = prev_grad  # type: ignore[operator]
+        if self._requires_grad and self.is_leaf:
+            if self._grad is None:
+                self._grad = prev_grad  # type: ignore[operator]
             else:
-                self.grad += prev_grad  # type: ignore[operator]
+                self._grad += prev_grad  # type: ignore[operator]
 
-        if self.grad_fn is not None and self.requires_grad:
+        if self._grad_fn is not None and self._requires_grad:
 
-            if isinstance(self.grad_fn, EmptyCallable):
+            if isinstance(self._grad_fn, EmptyCallable):
                 raise RuntimeError(
                     "The computational graph was cleaned up after the backward"
                 )
 
-            grad1, grad2 = self.grad_fn()
+            grad1, grad2 = self._grad_fn()
 
-            if grad1 is not None and self.prev_1 is not None:
-                full_grad1 = grad1 * prev_grad  # type: ignore[operator]
-                self.prev_1._backward(full_grad1)  # type: ignore[reportPrivateUsage]
+            full_grad1 = grad1 * prev_grad  # type: ignore[operator]
+            self._prev_1._backward(full_grad1)  # type: ignore[reportPrivateUsage]
 
-            if grad2 is not None and self.prev_2 is not None:
+            if grad2 is not None and self._prev_2 is not None:
                 full_grad2 = grad2 * prev_grad  # type: ignore[operator]
-                self.prev_2._backward(full_grad2)  # type: ignore[reportPrivateUsage]
+                self._prev_2._backward(full_grad2)  # type: ignore[reportPrivateUsage]
 
     @staticmethod
-    def reverse_dunder(meth_name: str) -> str:
+    def _reverse_dunder(meth_name: str) -> str:
         if not meth_name.startswith("__") or not meth_name.endswith("__"):
             raise ValueError
         inner = meth_name[2:-2]
@@ -111,7 +115,7 @@ class Scalar(BaseScalar):
             return f"__r{inner}__"
 
     @staticmethod
-    def _convert_ndarray_to_base_array(array: npt.NDArray[Any]) -> "BaseArray":
+    def _convert_ndarray_to_base_array(array: npt.NDArray[NumericDtypes]) -> "BaseArray":
         from src.dtypes import Array
 
         if array.dtype == np.float16:
@@ -134,12 +138,12 @@ class Scalar(BaseScalar):
             self._graph_clean_up()
 
     def detach(self) -> "BaseScalar":
-        result_obj = type(self)(self.value, requires_grad=False)
+        result_obj = type(self)(self._value, requires_grad=False)
         return result_obj
 
     def _base_operations_wrapper(
         self,
-        other: Union["BaseScalar", Floatable, npt.NDArray[Any], "BaseArray"],
+        other: BaseOperationsType,
         fn_getter: Callable[[Floatable, Floatable, Floatable], GradFnScalar],
         operation_name: str,
     ) -> Union["BaseScalar", "BaseArray", NotImplementedType]:
@@ -147,17 +151,21 @@ class Scalar(BaseScalar):
 
         if isinstance(other, np.ndarray):
             array = self._convert_ndarray_to_base_array(other)
-            return array.__getattribute__(self.reverse_dunder(operation_name))(value)
+            return array.__getattribute__(self._reverse_dunder(operation_name))(value)
+        # => Not ndarray
 
         block = self._array_trigger(other)
         if block is not None:
             return block
+        # => not BaseArray
+
+        other = cast(Union[BaseScalar, Floatable], other)
 
         flag = isinstance(other, BaseScalar)
-        req_grad = self.requires_grad
+        req_grad = self._requires_grad
         if flag:
             sec = other.item()
-            req_grad = req_grad or other.requires_grad
+            req_grad = req_grad or other._requires_grad
         else:
             sec = other
 
@@ -168,23 +176,24 @@ class Scalar(BaseScalar):
         if req_grad:
             fn = fn_getter(value, sec, result)
 
-            result_obj.grad_fn = fn
+            result_obj._grad_fn = fn
 
-            result_obj.prev_1 = self
+            result_obj._prev_1 = self
             if flag:
-                result_obj.prev_2 = other
+                result_obj._prev_2 = other
 
         return result_obj
 
     def __neg__(self) -> "BaseScalar":
-        result_obj = type(self)(-self.data, requires_grad=self.requires_grad)
-        result_obj.grad_fn = neg_backward()
-        result_obj.prev_1 = self
+        result_obj = type(self)(-self.data, requires_grad=self._requires_grad)
+        if self._requires_grad:
+            result_obj._grad_fn = neg_backward()
+            result_obj._prev_1 = self
 
         return result_obj
 
     def __add__(
-        self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -192,7 +201,7 @@ class Scalar(BaseScalar):
     ]:
         return self._base_operations_wrapper(other, add_backward, "__add__")
 
-    def __radd__(self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]) -> Union[
+    def __radd__(self, other: BaseOperationsType) -> Union[
         NotImplementedType,
         "BaseArray",
         "BaseScalar",
@@ -200,7 +209,7 @@ class Scalar(BaseScalar):
         return self.__add__(other)
 
     def __sub__(
-        self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -208,7 +217,7 @@ class Scalar(BaseScalar):
     ]:
         return self._base_operations_wrapper(other, sub_backward, "__sub__")
 
-    def __rsub__(self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]) -> Union[
+    def __rsub__(self, other: BaseOperationsType) -> Union[
         NotImplementedType,
         "BaseArray",
         "BaseScalar",
@@ -216,7 +225,7 @@ class Scalar(BaseScalar):
         return self.__neg__() + other  # type: ignore[operator]
 
     def __mul__(
-        self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -224,7 +233,7 @@ class Scalar(BaseScalar):
     ]:
         return self._base_operations_wrapper(other, mul_backward, "__mul__")
 
-    def __rmul__(self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]) -> Union[
+    def __rmul__(self, other: BaseOperationsType) -> Union[
         NotImplementedType,
         "BaseArray",
         "BaseScalar",
@@ -232,7 +241,7 @@ class Scalar(BaseScalar):
         return self.__mul__(other)
 
     def __truediv__(
-        self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -241,7 +250,7 @@ class Scalar(BaseScalar):
         return self._base_operations_wrapper(other, truediv_backward, "__truediv__")
 
     def __rtruediv__(
-        self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -254,7 +263,7 @@ class Scalar(BaseScalar):
         )
 
     def __pow__(
-        self, other: Union["BaseArray", "BaseScalar", Floatable, npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[
         NotImplementedType,
         "BaseArray",
@@ -263,14 +272,17 @@ class Scalar(BaseScalar):
         return self._base_operations_wrapper(other, power_backward, "__pow__")
 
     def __rpow__(
-        self, other: Union[Floatable, "BaseArray", npt.NDArray[Any]]
+        self, other: BaseOperationsType
     ) -> Union[NotImplementedType, "BaseScalar", "BaseArray"]:
         return self._base_operations_wrapper(other, rpow_backward, "__rpow__")
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BaseScalar):
             return self.data == other.data
-        elif isinstance(other, Floatable):
+        elif isinstance(other, (int, float, np.floating)):
             return self.data == other
         else:
             return False
+
+    def __ne__(self, other: object) -> bool:
+        return not (self == other)

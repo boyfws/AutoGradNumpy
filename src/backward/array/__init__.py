@@ -7,6 +7,8 @@ from .rtruediv import rtruediv_backward
 from .sub import sub_backward
 from .sum import sum_backward
 from .truediv import truediv_backward
+from .abs import abs_backward
+from .dot import dot_backward
 
 __all__ = [
     "neg_backward",
@@ -18,4 +20,6 @@ __all__ = [
     "pow_backward",
     "rtruediv_backward",
     "rpow_backward",
+    "abs_backward",
+    "dot_backward"
 ]

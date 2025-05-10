@@ -24,7 +24,7 @@ class BaseArray(abc.ABC):
     _requires_grad: bool
     _dtype: Union[Type[np.float16], Type[np.float32], Type[np.float64]]
 
-    _prev_1: Optional[Union["BaseScalar", "BaseArray"]]
+    _prev_1: Optional["BaseArray"]
     _prev_2: Optional[Union["BaseScalar", "BaseArray"]]
 
     _grad: Optional[ArGradType]
@@ -112,6 +112,49 @@ class BaseArray(abc.ABC):
         b: Union[npt.NDArray[NumericDtypes], Floatable],
     ) -> Union[Type[np.float16], Type[np.float32], Type[np.float64]]: ...
 
+    @overload
+    def _base_operations_wrapper(
+        self,
+        other: Union["BaseArray", npt.NDArray[NumericDtypes]],
+        fn_getter: Callable[
+            [
+                ArrayValueType,
+                npt.NDArray[NumericDtypes],
+                npt.NDArray[np.float_],
+            ],
+            Callable[
+                [ArGradType],
+                tuple[
+                    ArGradType,
+                    ArGradType,
+                ]
+            ],
+        ],
+        operation_name: str,
+    ) -> "BaseArray": ...
+
+    @overload
+    def _base_operations_wrapper(
+        self,
+        other: BaseOperationsType,
+        fn_getter: Callable[
+            [
+                ArrayValueType,
+                Union[Floatable, "BaseScalar"],
+                npt.NDArray[np.float_],
+            ],
+            Callable[
+                [ArGradType],
+                tuple[
+                    ArGradType,
+                    Floatable,
+                ]
+            ],
+        ],
+        operation_name: str,
+    ) -> "BaseArray": ...
+
+    @abc.abstractmethod
     def _base_operations_wrapper(
         self,
         other: BaseOperationsType,
@@ -159,23 +202,11 @@ class BaseArray(abc.ABC):
     @abc.abstractmethod
     def __rpow__(self, other: BaseOperationsType) -> "BaseArray": ...
 
-    @overload
-    def __eq__(self, other: BaseOperationsType) -> npt.NDArray[np.bool_]: ...
-
-    @overload
-    def __eq__(self, other: object) -> np.bool_: ...
+    @abc.abstractmethod
+    def __eq__(self, other: object) -> Union[np.bool_, npt.NDArray[np.bool_]]: ...  # type: ignore[reportIncompatibleMethodOverride]
 
     @abc.abstractmethod
-    def __eq__(self, other: object) -> Union[np.bool_, npt.NDArray[np.bool_]]: ...
-
-    @overload
-    def __ne__(self, other: BaseOperationsType) -> npt.NDArray[np.bool_]: ...
-
-    @overload
-    def __ne__(self, other: object) -> np.bool_: ...
-
-    @abc.abstractmethod
-    def __ne__(self, other: object) -> Union[np.bool_, npt.NDArray[np.bool_]]: ...
+    def __ne__(self, other: object) -> Union[np.bool_, npt.NDArray[np.bool_]]: ...  # type: ignore[reportIncompatibleMethodOverride]
 
     @abc.abstractmethod
     def __lt__(self, other: BaseOperationsType) -> npt.NDArray[np.bool_]: ...
@@ -265,6 +296,14 @@ class BaseScalar(abc.ABC):
     @abc.abstractmethod
     def data(self) -> Union[np.float16, np.float32, np.float64]: ...
 
+    @property
+    @abc.abstractmethod
+    def is_leaf(self) -> bool: ...
+
+    @property
+    @abc.abstractmethod
+    def grad(self) -> Union[Floatable, None]: ...
+
     @abc.abstractmethod
     def _zero_grad(self) -> None: ...
 
@@ -275,7 +314,7 @@ class BaseScalar(abc.ABC):
     def _backward(self, prev_grad: Floatable) -> None: ...
 
     @abc.abstractmethod
-    def backward(self, retain_graph: Optional[bool] = False) -> None: ...
+    def backward(self, retain_graph: bool = False) -> None: ...
 
     @abc.abstractmethod
     def detach(self) -> "BaseScalar": ...
