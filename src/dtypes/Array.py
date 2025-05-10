@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Callable, Optional, Type, Union, cast
 
 import numpy as np
@@ -7,13 +8,19 @@ from src.backward.array import (
     abs_backward,
     add_backward,
     dot_backward,
+    exp_backward,
+    getitem_backward,
+    log_backward,
     mul_backward,
     neg_backward,
     pow_backward,
+    prod_backward,
+    reshape_backward,
     rpow_backward,
     rtruediv_backward,
     sub_backward,
     sum_backward,
+    transpose_backward,
     truediv_backward,
 )
 from src.dtypes.Base import BaseArray
@@ -38,6 +45,7 @@ class Array(BaseArray):
             Union[Type[np.float16], Type[np.float32], Type[np.float64]]
         ] = None,
         requires_grad: bool = False,
+        _copy: bool = True,
     ) -> None:
         if not isinstance(array, np.ndarray):
             array = np.array(array)
@@ -54,7 +62,12 @@ class Array(BaseArray):
             else:
                 raise TypeError("dtype must be np.float16, np.float32, or np.float64")
 
-        self._value = array.copy().astype(self._dtype)
+        if _copy:
+            self._value = array.astype(self._dtype)
+        else:
+            # Only for private usage? assertion checks is everything okey
+            self._value = array
+            assert array.dtype == self._dtype
 
         self._requires_grad = requires_grad
         self._prev_1 = None
@@ -103,14 +116,47 @@ class Array(BaseArray):
     def item(self):
         return self.data
 
+    def _copy_key(
+        self, key: Union[NpIndicesTypes, tuple[NpIndicesTypes, ...]]
+    ) -> Union[NpIndicesTypes, tuple[NpIndicesTypes, ...]]:
+        if hasattr(key, "copy"):
+            try:
+                return key.copy()  # type: ignore[return-value]
+            except Exception:
+                pass
+
+        if isinstance(key, slice):
+            return slice(key.start, key.stop, key.step)  # type: ignore[return-value]
+
+        if isinstance(key, Iterable) and not isinstance(key, (str, bytes)):
+            return type(key)(self._copy_key(el) for el in key)  # type: ignore[return-value]
+
+        return key
+
     def __getitem__(
         self,
         key: Union[NpIndicesTypes, tuple[NpIndicesTypes, ...]],
-    ) -> "BaseArray": ...
+    ) -> "BaseArray":
+        value = self._value  # type: ignore[reportPrivateUsage]
+        key = self._copy_key(key)
+
+        new_array = cast(npt.ArrayLike, value[key])  # type: ignore
+        result_obj = type(self)(
+            new_array,
+            requires_grad=self.requires_grad,
+            dtype=self.dtype,
+        )
+        if self.requires_grad:
+            result_obj._grad_fn = getitem_backward(value, key)
+            result_obj._prev_1 = self
+
+        return result_obj
 
     def backward(self, retain_graph: bool = False) -> None:
         if self.shape == ():
             self._backward(np.array(1, dtype=np.float32))
+        else:
+            raise RuntimeError("Backward only supported for scalars")
 
         if not retain_graph:
             self._graph_clean_up()
@@ -118,7 +164,7 @@ class Array(BaseArray):
     def _backward(self, prev_grad: ArGradType) -> None:
         if self.requires_grad and self.is_leaf:
             if self._grad is None:
-                self._grad = prev_grad
+                self._grad = prev_grad.copy()
             else:
                 self._grad += prev_grad
 
@@ -205,16 +251,19 @@ class Array(BaseArray):
     ) -> "BaseArray":
         array_flag = isinstance(other, BaseArray)
 
-        value = self.data
+        value = self._value
         req_grad = self.requires_grad
 
         if array_flag:
-            sec = other.data
+            sec = other._value  # type: ignore[reportPrivateUsage]
             req_grad = req_grad or other.requires_grad
         else:
-            sec = other
+            if isinstance(other, np.ndarray):
+                sec = other.copy()
+            else:
+                sec = other
 
-        result = value.__getattribute__(operation_name)(sec)
+        result = self.data.__getattribute__(operation_name)(sec)
 
         result_dtype = self._promote_type(value, sec)
         result_obj = type(self)(
@@ -223,7 +272,7 @@ class Array(BaseArray):
             dtype=result_dtype,
         )
         if req_grad:
-            fn = fn_getter(value, sec, result_obj.data)
+            fn = fn_getter(value, sec, result_obj._value)  # type: ignore[reportPrivateUsage]
             result_obj._grad_fn = fn
 
             result_obj._prev_1 = self
@@ -298,15 +347,33 @@ class Array(BaseArray):
     def __lt__(
         self, other: BaseOperationsType
     ) -> Union[np.bool_, npt.NDArray[np.bool_]]:
-        pass
+        if isinstance(other, BaseArray):
+            return cast(
+                Union[np.bool_, npt.NDArray[np.bool_]], self._value < other.data
+            )
+        return cast(Union[np.bool_, npt.NDArray[np.bool_]], self._value < other)
 
     def __le__(
         self, other: BaseOperationsType
     ) -> Union[np.bool_, npt.NDArray[np.bool_]]:
-        pass
+        if isinstance(other, BaseArray):
+            return cast(
+                Union[np.bool_, npt.NDArray[np.bool_]], self._value <= other.data
+            )
+        return cast(Union[np.bool_, npt.NDArray[np.bool_]], self._value <= other)
+
+    def __gt__(
+        self, other: BaseOperationsType
+    ) -> Union[np.bool_, npt.NDArray[np.bool_]]:
+        return ~(self <= other)
+
+    def __ge__(
+        self, other: BaseOperationsType
+    ) -> Union[np.bool_, npt.NDArray[np.bool_]]:
+        return ~(self < other)
 
     def sum(self, axis: Optional[int] = None) -> "BaseArray":
-        value = self.data
+        value = self._value
         result = value.sum(axis=axis)
 
         result_obj = type(self)(
@@ -321,14 +388,14 @@ class Array(BaseArray):
             grad = sum_backward(
                 value,
                 axis=axis,
-                result=result_obj.data,
+                result=result_obj._value,  # type: ignore[reportPrivateUsage]
             )
             result_obj._grad_fn = grad
 
         return result_obj
 
     def abs(self) -> "BaseArray":
-        value = self.data
+        value = self._value
         result_obj = type(self)(
             np.abs(value),
             requires_grad=self.requires_grad,
@@ -347,6 +414,106 @@ class Array(BaseArray):
             "dot",
         )
 
+    def transpose(
+        self,
+        axes: Optional[Union[list[int], tuple[int, ...]]] = None,
+        copy: bool = True,
+    ) -> "BaseArray":
+        if isinstance(axes, list):
+            axes = axes.copy()
+
+        result_obj = type(self)(
+            self._value.transpose(axes),
+            dtype=self._dtype,
+            requires_grad=self.requires_grad,
+            _copy=copy,
+        )
+
+        if self.requires_grad:
+            result_obj._prev_1 = self
+            result_obj._grad_fn = transpose_backward(axes)
+
+        return result_obj
+
+    def reshape(
+        self,
+        shape: Union[list[int], tuple[int, ...]],
+    ) -> "BaseArray":
+
+        result_obj = type(self)(
+            self._value.reshape(shape),
+            dtype=self._dtype,
+            requires_grad=self.requires_grad,
+        )
+
+        if self.requires_grad:
+            result_obj._prev_1 = self
+            result_obj._grad_fn = reshape_backward(self._value.shape)
+
+        return result_obj
+
+    def log(self) -> "BaseArray":
+        result_obj = type(self)(
+            np.log(self._value),
+            dtype=self._dtype,
+            requires_grad=self.requires_grad,
+        )
+
+        if self.requires_grad:
+            result_obj._prev_1 = self
+            result_obj._grad_fn = log_backward(self._value)
+
+        return result_obj
+
+    def exp(self) -> "BaseArray":
+        result_obj = type(self)(
+            np.exp(self._value),
+            dtype=self._dtype,
+            requires_grad=self.requires_grad,
+        )
+
+        if self.requires_grad:
+            result_obj._prev_1 = self
+            result_obj._grad_fn = exp_backward(result_obj._value)  # type: ignore[reportPrivateUsage]
+
+        return result_obj
+
+    def prod(self, axis: Optional[int] = None) -> "BaseArray":
+        result_obj = type(self)(
+            np.prod(self._value, axis=axis),
+            dtype=self._dtype,
+            requires_grad=self.requires_grad,
+        )
+
+        if self.requires_grad:
+            result_obj._prev_1 = self
+            result_obj._grad_fn = prod_backward(self._value, result_obj._value, axis)  # type: ignore[reportPrivateUsage]
+
+        return result_obj
+
+    def _max_min_wrapper(
+        self, raw_idx: Union[np.intp, npt.NDArray[np.int_]], axis: Optional[int] = None
+    ) -> "BaseArray":
+        if axis is None:
+            idx = int(raw_idx)
+            pos: tuple[np.intp, ...] = np.unravel_index(idx, self._value.shape)
+            return self[pos]
+        else:
+            idx = cast(npt.NDArray[np.int_], raw_idx)
+            indexer: list[Union[int, slice, npt.NDArray[np.int_]]] = [
+                slice(None)
+            ] * self._value.ndim
+            indexer[axis] = idx
+            return self[tuple(indexer)]
+
+    def min(self, axis: Optional[int] = None) -> "BaseArray":
+        idx: Union[np.intp, npt.NDArray[np.int_]] = self._value.argmin(axis=axis)
+        return self._max_min_wrapper(idx, axis=axis)
+
+    def max(self, axis: Optional[int] = None) -> "BaseArray":
+        idx: Union[np.intp, npt.NDArray[np.int_]] = self._value.argmin(axis=axis)
+        return self._max_min_wrapper(idx, axis=axis)
+
     def mean(self, axis: Optional[int] = None) -> "BaseArray":
         if axis is None:
             n = self.size
@@ -354,24 +521,3 @@ class Array(BaseArray):
             n = self.shape[axis]
 
         return self.sum(axis=axis) / n
-
-    def transpose(self) -> "BaseArray":
-        pass
-
-    def reshape(self) -> "BaseArray":
-        pass
-
-    def min(self, axis: Optional[int] = None) -> "BaseArray":
-        pass
-
-    def max(self, axis: Optional[int] = None) -> "BaseArray":
-        pass
-
-    def prod(self, axis: Optional[int] = None) -> "BaseArray":
-        pass
-
-    def log(self) -> "BaseArray":
-        pass
-
-    def exp(self) -> "BaseArray":
-        pass

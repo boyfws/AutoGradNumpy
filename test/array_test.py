@@ -4,7 +4,7 @@ import pytest
 from add_src_to_path import append_src
 append_src()
 
-from src import Array, Array
+from src import Array
 
 @pytest.mark.parametrize("dtype", [
     np.float32,
