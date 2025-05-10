@@ -4,7 +4,7 @@ import math
 from add_src_to_path import append_src
 append_src()
 
-from src import Float32
+from src import Array
 
 # test values (integers for precision)
 TEST_VALUES = [(10, 3), (100, 20), (15, 5)]
@@ -13,7 +13,7 @@ TEST_VALUES_DIV = [(10, 2), (100, 25), (15, 3)]  # Avoid division by zero
 
 def test_init() -> None:
     """test scalar initialization."""
-    x = Float32(5, requires_grad=True)
+    x = Array(5, requires_grad=True)
     assert x.item() == 5
     assert x.requires_grad is True
     assert x.grad is None
@@ -22,8 +22,8 @@ def test_init() -> None:
 @pytest.mark.parametrize("x_1, x_2", TEST_VALUES)
 def test_add_grad(x_1, x_2) -> None:
     """test gradient computation for addition operation."""
-    a = Float32(x_1, requires_grad=True)
-    b = Float32(x_2, requires_grad=True)
+    a = Array(x_1, requires_grad=True)
+    b = Array(x_2, requires_grad=True)
     c = a + b
     c.backward()
 
@@ -35,8 +35,8 @@ def test_add_grad(x_1, x_2) -> None:
 @pytest.mark.parametrize("x_1, x_2", TEST_VALUES)
 def test_sub_grad(x_1, x_2) -> None:
     """test gradient computation for subtraction operation."""
-    a = Float32(x_1, requires_grad=True)
-    b = Float32(x_2, requires_grad=True)
+    a = Array(x_1, requires_grad=True)
+    b = Array(x_2, requires_grad=True)
     c = a - b
     c.backward()
 
@@ -47,8 +47,8 @@ def test_sub_grad(x_1, x_2) -> None:
 @pytest.mark.parametrize("x_1, x_2", TEST_VALUES)
 def test_mul_grad(x_1, x_2) -> None:
     """test gradient computation for multiplication operation."""
-    a = Float32(x_1, requires_grad=True)
-    b = Float32(x_2, requires_grad=True)
+    a = Array(x_1, requires_grad=True)
+    b = Array(x_2, requires_grad=True)
     c = a * b
     c.backward()
 
@@ -59,8 +59,8 @@ def test_mul_grad(x_1, x_2) -> None:
 @pytest.mark.parametrize("x_1, x_2", TEST_VALUES_DIV)
 def test_div_grad(x_1, x_2) -> None:
     """test gradient computation for division operation."""
-    a = Float32(x_1, requires_grad=True)
-    b = Float32(x_2, requires_grad=True)
+    a = Array(x_1, requires_grad=True)
+    b = Array(x_2, requires_grad=True)
     c = a / b
     c.backward()
 
@@ -70,8 +70,8 @@ def test_div_grad(x_1, x_2) -> None:
 
 def test_chain_rule() -> None:
     """test chain rule (combined operations)."""
-    a = Float32(2, requires_grad=True)
-    b = Float32(3, requires_grad=True)
+    a = Array(2, requires_grad=True)
+    b = Array(3, requires_grad=True)
     c = a * b  # c = 2 * 3 = 6
     d = c + 1  # d = 6 + 1 = 7
     d.backward()
@@ -83,8 +83,8 @@ def test_chain_rule() -> None:
 
 def test_no_grad() -> None:
     """test disabled gradients (requires_grad=False)."""
-    a = Float32(5, requires_grad=False)
-    b = Float32(10, requires_grad=True)
+    a = Array(5, requires_grad=False)
+    b = Array(10, requires_grad=True)
     c = a * b
     c.backward()
 
@@ -94,8 +94,8 @@ def test_no_grad() -> None:
 
 def test_grad_accumulation() -> None:
     """test gradient accumulation across multiple backward passes."""
-    a = Float32(4, requires_grad=True)
-    b = Float32(2, requires_grad=True)
+    a = Array(4, requires_grad=True)
+    b = Array(2, requires_grad=True)
 
     # First pass
     c = a * b
@@ -112,7 +112,7 @@ def test_grad_accumulation() -> None:
 
 def test_negation_gradient() -> None:
     """test gradient computation through negation operation."""
-    a = Float32(3.0, requires_grad=True)
+    a = Array(3.0, requires_grad=True)
     b = -a  # b = -3.0
     b.backward()
     assert b.item() == -3.0
@@ -120,8 +120,8 @@ def test_negation_gradient() -> None:
 
 def test_negation_chain_rule() -> None:
     """test chain rule through multiple operations including negation."""
-    a = Float32(2.0, requires_grad=True)
-    b = Float32(4.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
+    b = Array(4.0, requires_grad=True)
     c = -a    # c = -2.0
     d = c * b  # d = -2.0 * 4.0 = -8.0
     d.backward()
@@ -131,7 +131,7 @@ def test_negation_chain_rule() -> None:
 
 def test_double_negation() -> None:
     """test that double negation works and computes gradients correctly."""
-    a = Float32(1.5, requires_grad=True)
+    a = Array(1.5, requires_grad=True)
     b = -(-a)  # b = 1.5
     b.backward()
     assert b.item() == pytest.approx(1.5)
@@ -139,7 +139,7 @@ def test_double_negation() -> None:
 
 def test_negation_with_constants() -> None:
     """test negation when combined with constant values."""
-    a = Float32(3.0, requires_grad=True)
+    a = Array(3.0, requires_grad=True)
     b = 2.0 - (-a)  # b = 2.0 - (-3.0) = 5.0
     b.backward()
     assert b.item() == 5.0
@@ -157,10 +157,10 @@ def test_radd_operation_and_gradient():
     """test __radd__ operation and gradient computation"""
     for left, right, expected in RADD_TEST_VALUES:
         # test operation
-        a = Float32(right, requires_grad=True)
+        a = Array(right, requires_grad=True)
         result = left + a  # Calls __radd__
 
-        assert isinstance(result, Float32)
+        assert isinstance(result, Array)
         assert result.item() == pytest.approx(expected)
 
         # test gradient
@@ -172,10 +172,10 @@ def test_rsub_operation_and_gradient():
     """test __rsub__ operation and gradient computation"""
     for left, right, expected in RSUB_TEST_VALUES:
         # test operation
-        a = Float32(right, requires_grad=True)
+        a = Array(right, requires_grad=True)
         result = left - a  # Calls __rsub__
 
-        assert isinstance(result, Float32)
+        assert isinstance(result, Array)
         assert result.item() == pytest.approx(expected)
 
         # test gradient
@@ -187,10 +187,10 @@ def test_rmul_operation_and_gradient():
     """test __rmul__ operation and gradient computation"""
     for left, right, expected in RMUL_TEST_VALUES:
         # test operation
-        a = Float32(right, requires_grad=True)
+        a = Array(right, requires_grad=True)
         result = left * a  # Calls __rmul__
 
-        assert isinstance(result, Float32)
+        assert isinstance(result, Array)
         assert result.item() == pytest.approx(expected)
 
         # test gradient
@@ -202,10 +202,10 @@ def test_rtruediv_operation_and_gradient():
     """test __rtruediv__ operation and gradient computation"""
     for left, right, expected in RTRUEDIV_TEST_VALUES:
         # test operation
-        a = Float32(right, requires_grad=True)
+        a = Array(right, requires_grad=True)
         result = left / a  # Calls __rtruediv__
 
-        assert isinstance(result, Float32)
+        assert isinstance(result, Array)
         assert result.item() == pytest.approx(expected)
 
         # test gradient
@@ -216,13 +216,13 @@ def test_rtruediv_operation_and_gradient():
 
 def test_mixed_reverse_operations():
     """test combination of reverse operations with gradients"""
-    a = Float32(2.0, requires_grad=True)
-    b = Float32(3.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
+    b = Array(3.0, requires_grad=True)
 
     # Complex expression: (5 + a) * (4 - b) / 2
     result = (5 + a) * (4 - b) / 2.0
 
-    assert isinstance(result, Float32)
+    assert isinstance(result, Array)
     assert result.item() == pytest.approx((5 + 2) * (4 - 3) / 2)
 
     # Verify gradients
@@ -237,16 +237,16 @@ def test_mixed_reverse_operations():
 
 def test_reverse_operations_with_non_float32():
     """test reverse operations with Python native types"""
-    a = Float32(3.0, requires_grad=True)
+    a = Array(3.0, requires_grad=True)
 
     # test with integer
     result_int = 5 + a
-    assert isinstance(result_int, Float32)
+    assert isinstance(result_int, Array)
     assert result_int.item() == 8.0
 
     # test with float
     result_float = 2.5 * a
-    assert isinstance(result_float, Float32)
+    assert isinstance(result_float, Array)
     assert result_float.item() == 7.5
 
 
@@ -257,7 +257,7 @@ def test_reverse_operations_with_non_float32():
 ])
 def test_pow_gradient_base(base, exp):
     """test gradient calculation for base in a**b"""
-    a = Float32(base, requires_grad=True)
+    a = Array(base, requires_grad=True)
     result = a ** exp
     result.backward()
 
@@ -271,7 +271,7 @@ def test_pow_gradient_base(base, exp):
 ])
 def test_pow_gradient_exp(base, exp):
     """test gradient calculation for exponent in a**b"""
-    b = Float32(exp, requires_grad=True)
+    b = Array(exp, requires_grad=True)
     result = base ** b
     result.backward()
 
@@ -281,8 +281,8 @@ def test_pow_gradient_exp(base, exp):
 
 def test_combined_gradients():
     """test gradients when both base and exponent require grad"""
-    a = Float32(2.0, requires_grad=True)
-    b = Float32(3.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
+    b = Array(3.0, requires_grad=True)
     result = a ** b
     result.backward()
 
@@ -294,7 +294,7 @@ def test_combined_gradients():
 
 def test_zero_base_gradient():
     """test gradient with zero base (0^x special case)"""
-    a = Float32(0.0, requires_grad=True)
+    a = Array(0.0, requires_grad=True)
     result = a ** 2.0
     result.backward()
     assert a.grad == 0.0  # Derivative of 0^x at 0 is 0
@@ -302,8 +302,8 @@ def test_zero_base_gradient():
 
 def test_one_base_gradient():
     """test gradient when base is 1 (1^x special case)"""
-    a = Float32(1.0, requires_grad=True)
-    b = Float32(3.0, requires_grad=True)
+    a = Array(1.0, requires_grad=True)
+    b = Array(3.0, requires_grad=True)
     result = a ** b
     result.backward()
 
@@ -315,7 +315,7 @@ def test_one_base_gradient():
 
 def test_rpow_gradient():
     """test gradient for reverse power operation"""
-    a = Float32(3.0, requires_grad=True)
+    a = Array(3.0, requires_grad=True)
     result = 2.0 ** a  # Calls __rpow__
     result.backward()
 
@@ -325,7 +325,7 @@ def test_rpow_gradient():
 
 def test_detach_returns_new_object():
     """Test that detach() returns a new object with same value"""
-    original = Float32(5.0, requires_grad=True)
+    original = Array(5.0, requires_grad=True)
     detached = original.detach()
 
     assert detached.item() == original.item()
@@ -334,9 +334,9 @@ def test_detach_returns_new_object():
 
 def test_detach_breaks_gradient_connection():
     """Test that detach() breaks gradient computation chain"""
-    a = Float32(2.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
     b = a.detach()  # Detached copy
-    c = Float32(3.0, requires_grad=True)
+    c = Array(3.0, requires_grad=True)
     result = b * c  # Operation with detached tensor
 
     result.backward()
@@ -348,11 +348,11 @@ def test_detach_breaks_gradient_connection():
 
 def test_detach_with_computational_graph():
     """Test detach() in middle of computational graph"""
-    a = Float32(2.0, requires_grad=True)
-    b = Float32(3.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
+    b = Array(3.0, requires_grad=True)
     c = a * b
     d = c.detach()  # Detach here
-    e = d * Float32(4.0, requires_grad=True)
+    e = d * Array(4.0, requires_grad=True)
 
     e.backward()
 
@@ -365,9 +365,9 @@ def test_detach_with_computational_graph():
 
 def test_detach_then_reattach():
     """Test that detached tensor can be reattached to graph"""
-    a = Float32(2.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
     b = a.detach()
-    c = Float32(b.item(), requires_grad=True)  # Reattach
+    c = Array(b.item(), requires_grad=True)  # Reattach
 
     result = c * 3.0
     result.backward()
@@ -378,7 +378,7 @@ def test_detach_then_reattach():
 
 def test_detach_multiple_calls():
     """Test multiple detach() calls don't affect behavior"""
-    a = Float32(3.0, requires_grad=True)
+    a = Array(3.0, requires_grad=True)
     b = a.detach().detach().detach()
 
     assert b.item() == pytest.approx(3.0)
@@ -387,9 +387,9 @@ def test_detach_multiple_calls():
 
 def test_multiple_usage():
     "Test the case where single object is used twice"
-    a = Float32(2, requires_grad=True)
+    a = Array(2, requires_grad=True)
 
-    b = Float32(1, requires_grad=True)
+    b = Array(1, requires_grad=True)
 
     c = a + b
 
@@ -402,9 +402,9 @@ def test_multiple_usage():
 
 
 def test_unused_grad():
-    a = Float32(2, requires_grad=True)
+    a = Array(2, requires_grad=True)
 
-    b = Float32(1, requires_grad=True)
+    b = Array(1, requires_grad=True)
 
     c = a + b
 
@@ -420,7 +420,7 @@ def test_unused_grad():
 
 
 def test_single_scalar_grad():
-    a = Float32(2, requires_grad=True)
+    a = Array(2, requires_grad=True)
 
     c = a + a
 
@@ -439,8 +439,8 @@ def test_backward_without_retain_graph():
     either raises an error or does not accumulate again.
     """
     # Simple expression: (a + b)^2
-    a = Float32(2.0, requires_grad=True)
-    b = Float32(3.0, requires_grad=True)
+    a = Array(2.0, requires_grad=True)
+    b = Array(3.0, requires_grad=True)
     c = a + b
     d = c * c  # d = (a + b)^2
 
@@ -459,8 +459,8 @@ def test_backward_with_retain_graph():
     and accumulates gradients correctly.
     """
     # Simple expression: a * b
-    a = Float32(4.0, requires_grad=True)
-    b = Float32(5.0, requires_grad=True)
+    a = Array(4.0, requires_grad=True)
+    b = Array(5.0, requires_grad=True)
     c = a * b
 
     # 1st pass

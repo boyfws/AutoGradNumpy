@@ -1,54 +1,31 @@
-from typing import Callable, Union, cast, overload
+from typing import Callable, Union
 
-import numpy as np
 import numpy.typing as npt
 
-from src.types import ArGradType, ArrayValueType, Floatable, GradFnArray, NumericDtypes
+from src.types import ArGradType, ArrayValueType, Floatable, NumericDtypes
 
 from .add import add_backward
-
-
-@overload
-def sub_backward(
-    a: ArrayValueType, b: npt.NDArray[NumericDtypes], result: npt.NDArray[np.float_]
-) -> Callable[
-    [ArGradType],
-    tuple[
-        ArGradType,
-        ArGradType,
-    ],
-]: ...
-
-
-@overload
-def sub_backward(
-    a: ArrayValueType, b: Floatable, result: npt.NDArray[np.float_]
-) -> Callable[
-    [ArGradType],
-    tuple[
-        ArGradType,
-        Floatable,
-    ],
-]: ...
 
 
 def sub_backward(
     a: ArrayValueType,
     b: Union[npt.NDArray[NumericDtypes], Floatable],
-    result: npt.NDArray[np.float_],
-) -> GradFnArray:
-    b_is_array = isinstance(b, np.ndarray)
+    result: ArrayValueType,
+) -> Callable[
+    [ArGradType],
+    tuple[
+        ArGradType,
+        ArGradType,
+    ],
+]:
     target_fn = add_backward(a, b, result)
 
     def fn(
         prev_grad: ArGradType,
-    ) -> tuple[ArGradType, Union[ArGradType, Floatable]]:
+    ) -> tuple[ArGradType, ArGradType]:
         res = target_fn(prev_grad)
         ret_1 = -res[1]  # type: ignore[operator]
 
         return res[0], ret_1
 
-    if b_is_array:
-        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType]], fn)
-    else:
-        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable]], fn)
+    return fn

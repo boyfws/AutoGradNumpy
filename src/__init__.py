@@ -1,8 +1,5 @@
-from .dtypes import Array, Float16, Float32, Float64
+from .dtypes import Array
 
 __all__ = [
-    "Float16",
-    "Float32",
-    "Float64",
     "Array",
 ]

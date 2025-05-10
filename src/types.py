@@ -7,9 +7,8 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from src.dtypes.Base import BaseArray, BaseScalar
+    from src.dtypes.Base import BaseArray
 
-Floatable = Union[int, float, np.float_]
 
 NotImplementedType = NotImplementedType
 
@@ -45,42 +44,14 @@ NumericDtypes = Union[
 ]
 
 GradFnArray = Union[
-    Callable[[ArGradType], tuple[ArGradType, Floatable]],
-    Callable[
-        [ArGradType],
-        tuple[
-            ArGradType,
-            ArGradType,
-        ],
-    ],
+    Callable[[ArGradType], tuple[ArGradType, ArGradType]],
     Callable[[ArGradType], tuple[ArGradType, None]],
 ]
 
 ArrayValueType = npt.NDArray[Union[np.float16, np.float32, np.float64]]
 
-# -------------------- Types for Scalar --------------------
-
-
-GradFnScalar = Union[
-    Callable[
-        [],
-        tuple[
-            Floatable,
-            Floatable,
-        ],
-    ],
-    Callable[
-        [],
-        tuple[
-            ArGradType,
-            None,
-        ],
-    ],
-    Callable[[], tuple[Floatable, None]],
-]
-
 # -------------------- Common types --------------------
 
-BaseOperationsType = Union[
-    Floatable, npt.NDArray[NumericDtypes], "BaseScalar", "BaseArray"
-]
+Floatable = Union[int, float, NumericDtypes]
+
+BaseOperationsType = Union[Floatable, npt.NDArray[NumericDtypes], "BaseArray"]

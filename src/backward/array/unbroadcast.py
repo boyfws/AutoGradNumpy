@@ -1,24 +1,18 @@
-from typing import Literal, Optional, Union, overload
+from typing import Optional
 
-from src.types import ArGradType, Floatable
+import numpy as np
 
-
-@overload
-def unbroadcast(grad: ArGradType, shape: Literal[None]) -> Floatable: ...
-
-
-@overload
-def unbroadcast(grad: ArGradType, shape: tuple[int, ...]) -> ArGradType: ...
+from src.types import ArGradType
 
 
 def unbroadcast(
     grad: ArGradType, shape: Optional[tuple[int, ...]] = None
-) -> Union[ArGradType, Floatable]:
+) -> ArGradType:
     """
     Reduce `grad` back to `shape` by summing over broadcasted dimensions.
     """
     if shape is None:
-        return grad.sum().reshape(())
+        return np.array(grad.sum(), dtype=np.float32)
 
     ndim_diff = grad.ndim - len(shape)
     shape_padded = (1,) * ndim_diff + shape  # e.g. (1,1,3,4)

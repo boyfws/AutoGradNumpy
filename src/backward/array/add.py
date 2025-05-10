@@ -1,58 +1,34 @@
-from typing import Callable, Union, cast, overload
+from collections.abc import Callable
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
 
-from src.types import ArGradType, ArrayValueType, Floatable, GradFnArray, NumericDtypes
+from src.types import ArGradType, ArrayValueType, Floatable, NumericDtypes
 
 from .unbroadcast import unbroadcast
-
-
-@overload
-def add_backward(
-    a: ArrayValueType, b: npt.NDArray[NumericDtypes], result: npt.NDArray[np.float_]
-) -> Callable[
-    [ArGradType],
-    tuple[
-        ArGradType,
-        ArGradType,
-    ],
-]: ...
-
-
-@overload
-def add_backward(
-    a: ArrayValueType, b: Floatable, result: npt.NDArray[np.float_]
-) -> Callable[
-    [ArGradType],
-    tuple[
-        ArGradType,
-        Floatable,
-    ],
-]: ...
 
 
 def add_backward(
     a: ArrayValueType,
     b: Union[npt.NDArray[NumericDtypes], Floatable],
-    result: npt.NDArray[np.float_],
-) -> GradFnArray:
+    result: ArrayValueType,
+) -> Callable[[ArGradType], tuple[ArGradType, ArGradType]]:
 
-    a_shape = a.shape
+    a_shape = a.shape if a.shape != () else None
 
-    b_is_array = isinstance(b, np.ndarray)
-    b_shape = b.shape if b_is_array else None
+    if isinstance(b, np.ndarray):
+        b_shape = b.shape if b.shape != () else None
+    else:
+        b_shape = None
 
     def fn(
         prev_grad: ArGradType,
-    ) -> tuple[ArGradType, Union[ArGradType, Floatable]]:
+    ) -> tuple[ArGradType, ArGradType]:
 
         grad_a = unbroadcast(prev_grad, a_shape)
         grad_b = unbroadcast(prev_grad, b_shape)
 
         return grad_a, grad_b
 
-    if b_is_array:
-        return cast(Callable[[ArGradType], tuple[ArGradType, ArGradType]], fn)
-    else:
-        return cast(Callable[[ArGradType], tuple[ArGradType, Floatable]], fn)
+    return fn

@@ -1,4 +1,4 @@
-from typing import Any, Type, Optional
+from typing import Any
 
 
 class EmptyCallable:
@@ -8,17 +8,5 @@ class EmptyCallable:
     we can consider this class as a marker that the backpropagation pass has been done
     """
 
-    _instance: Optional["EmptyCallable"] = None
-
-    def __new__(
-        cls: Type["EmptyCallable"],
-        *args: Any,
-        **kwargs: Any
-    ) -> "EmptyCallable":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        if not hasattr(self, "_initialized"):
-            self._initialized = True
+    def __call__(self, prev_grad: Any) -> tuple[None, None]:
+        return None, None

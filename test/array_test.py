@@ -4,7 +4,7 @@ import pytest
 from add_src_to_path import append_src
 append_src()
 
-from src import Array, Float32
+from src import Array, Array
 
 @pytest.mark.parametrize("dtype", [
     np.float32,
@@ -43,20 +43,6 @@ def test_init3():
 def test_init_not_array() -> None:
     array = Array([1, 2, 3], dtype=np.float32)
     assert all(array.data == np.array([1, 2, 3], dtype=np.float32))
-
-
-def get_item_test() -> None:
-    array = np.array([
-        [1, 2, 3],
-        [1, 4, 9]
-    ], dtype=np.float32)
-
-    ar_obj = Array(array)
-
-    assert ar_obj[:3] == array[:3]
-    assert ar_obj[0] == array[0]
-    assert ar_obj[1, 2] == array[1, 2]
-    assert ar_obj[:1, 2] == array[:1, 2]
 
 
 TEST_VALUES = [
@@ -114,12 +100,12 @@ def test_add(a, b):
     if isinstance(a, np.ndarray):
         a_trans = Array(a)
     else:
-        a_trans = Float32(a)
+        a_trans = Array(a)
 
     if isinstance(b, np.ndarray):
         b_trans = Array(b)
     else:
-        b_trans = Float32(b)
+        b_trans = Array(b)
 
     res_1 = a + b_trans
     res_2 = a_trans + b
@@ -139,12 +125,12 @@ def test_sub(a, b):
     if isinstance(a, np.ndarray):
         a_trans = Array(a)
     else:
-        a_trans = Float32(a)
+        a_trans = Array(a)
 
     if isinstance(b, np.ndarray):
         b_trans = Array(b)
     else:
-        b_trans = Float32(b)
+        b_trans = Array(b)
 
     res_1 = a - b_trans
     res_2 = a_trans - b
@@ -164,12 +150,12 @@ def test_mul(a, b):
     if isinstance(a, np.ndarray):
         a_trans = Array(a)
     else:
-        a_trans = Float32(a)
+        a_trans = Array(a)
 
     if isinstance(b, np.ndarray):
         b_trans = Array(b)
     else:
-        b_trans = Float32(b)
+        b_trans = Array(b)
 
     res_1 = a * b_trans
     res_2 = a_trans * b
@@ -189,12 +175,12 @@ def test_truediv(a, b):
     if isinstance(a, np.ndarray):
         a_trans = Array(a)
     else:
-        a_trans = Float32(a)
+        a_trans = Array(a)
 
     if isinstance(b, np.ndarray):
         b_trans = Array(b)
     else:
-        b_trans = Float32(b)
+        b_trans = Array(b)
 
 
     res_1 = a / b_trans
@@ -215,12 +201,12 @@ def test_pow(a, b):
     if isinstance(a, np.ndarray):
         a_trans = Array(a)
     else:
-        a_trans = Float32(a)
+        a_trans = Array(a)
 
     if isinstance(b, np.ndarray):
         b_trans = Array(b)
     else:
-        b_trans = Float32(b)
+        b_trans = Array(b)
 
     res_1 = a ** b_trans
     res_2 = a_trans ** b
@@ -373,4 +359,4 @@ def test_eq():
     assert all(c == c)
     assert all(a == b)
     assert any(c != b)
-    assert a != 2
+    assert any(a != 2)
