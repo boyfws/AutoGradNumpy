@@ -6,7 +6,7 @@ from src.types import ArGradType
 
 
 def reshape_backward(
-    original_shape: Union[list[int], tuple[int, ...]]
+    original_shape: Union[list[int], tuple[int, ...]],
 ) -> Callable[[ArGradType], tuple[ArGradType, None]]:
 
     def fn(

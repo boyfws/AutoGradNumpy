@@ -6,7 +6,7 @@ from src.types import ArGradType
 
 
 def transpose_backward(
-    axes: Union[list[int], tuple[int, ...], None]
+    axes: Union[list[int], tuple[int, ...], None],
 ) -> Callable[[ArGradType], tuple[ArGradType, None]]:
 
     def fn(
