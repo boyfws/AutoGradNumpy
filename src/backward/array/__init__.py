@@ -15,6 +15,7 @@ from .sub import sub_backward
 from .sum import sum_backward
 from .transpose import transpose_backward
 from .truediv import truediv_backward
+from .max_min import max_min_backward
 
 __all__ = [
     "neg_backward",
@@ -34,4 +35,5 @@ __all__ = [
     "log_backward",
     "exp_backward",
     "prod_backward",
+    "max_min_backward",
 ]

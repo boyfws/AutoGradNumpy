@@ -22,6 +22,7 @@ from src.backward.array import (
     sum_backward,
     transpose_backward,
     truediv_backward,
+    max_min_backward,
 )
 from src.dtypes.Base import BaseArray
 from src.dtypes.EmptyCallable import EmptyCallable
@@ -65,7 +66,7 @@ class Array(BaseArray):
         if _copy:
             self._value = array.astype(self._dtype)
         else:
-            # Only for private usage? assertion checks is everything okey
+            # Only for private usage assertion checks is everything okay
             self._value = array
             assert array.dtype == self._dtype
 
@@ -497,21 +498,47 @@ class Array(BaseArray):
         if axis is None:
             idx = int(raw_idx)
             pos: tuple[np.intp, ...] = np.unravel_index(idx, self._value.shape)
-            return self[pos]
+            result_value = self._value[pos]
         else:
             idx = cast(npt.NDArray[np.int_], raw_idx)
             indexer: list[Union[int, slice, npt.NDArray[np.int_]]] = [
                 slice(None)
             ] * self._value.ndim
             indexer[axis] = idx
-            return self[tuple(indexer)]
+            result_value = self._value[tuple(indexer)]
+
+        result_obj = type(self)(
+            result_value,
+            requires_grad=self.requires_grad,
+            dtype=self.dtype,
+        )
+
+        if axis is None:
+            mask = self._value == result_value
+            mask = (mask / mask.sum()).astype(np.float32)
+        else:
+            idx = [1] * self._value.ndim
+            idx[axis] = -1
+
+            mask = self._value == result_value.reshape(*idx)
+            sums = mask.sum(axis=axis).reshape(*idx)
+            mask = (mask / sums).astype(np.float32)
+
+        if self.requires_grad:
+            result_obj._grad_fn = max_min_backward(
+                mask,
+                axis,
+            )
+            result_obj._prev_1 = self
+
+        return result_obj
 
     def min(self, axis: Optional[int] = None) -> "BaseArray":
         idx: Union[np.intp, npt.NDArray[np.int_]] = self._value.argmin(axis=axis)
         return self._max_min_wrapper(idx, axis=axis)
 
     def max(self, axis: Optional[int] = None) -> "BaseArray":
-        idx: Union[np.intp, npt.NDArray[np.int_]] = self._value.argmin(axis=axis)
+        idx: Union[np.intp, npt.NDArray[np.int_]] = self._value.argmax(axis=axis)
         return self._max_min_wrapper(idx, axis=axis)
 
     def mean(self, axis: Optional[int] = None) -> "BaseArray":

@@ -15,11 +15,7 @@ def compare_tensor_ops(fn_arr, fn_torch, name=""):
     # Array
     arr_res, arr_inputs = fn_arr()
     # if output is scalar, use scalar grad, else ones_like
-    if isinstance(arr_res, Array):
-        arr_res.sum().backward()
-    else:
-        arr_res.backward()
-
+    arr_res.sum().backward()
     assert arr_res._grad is None
 
     assert arr_res.requires_grad
@@ -29,10 +25,8 @@ def compare_tensor_ops(fn_arr, fn_torch, name=""):
 
     # torch
     t_res, t_inputs = fn_torch()
-    if isinstance(t_res, torch.Tensor):
-        t_res.sum().backward()
-    else:
-        t_res.backward()
+    t_res.sum().backward()
+
 
     assert t_res.requires_grad
     assert not t_res.is_leaf
@@ -376,3 +370,76 @@ def test_requires_grad3(req_g1):
     assert c_t.is_leaf == (not req_g1)
     assert a_t.is_leaf == a_ar.is_leaf
     assert a_t.is_leaf == True
+
+X = np.array([
+    [1, 0, 1, 1],
+    [9, 3, 0, 0],
+    [9, 1, 1, 2],
+    [1, 1, 1, 1],
+    [2, 2, 0, 0]
+]).astype(np.float32)
+w = np.array([-5, 2, 3, 4]).reshape(-1, 1).astype(np.float32)
+y = np.array([-1, 4, -5, -6, 9]).reshape(-1, 1).astype(np.float32)
+
+
+def test_dot_abs():
+    def fn_arr():
+        X_ar = Array(X, requires_grad=True)
+        y_ar = Array(y, requires_grad=True)
+        w_ar = Array(w, requires_grad=True)
+        pred = X_ar.dot(w_ar)
+        return (pred - y_ar).abs().mean(), [w_ar, X_ar, y_ar]
+
+
+    def fn_t():
+        X_t = torch.tensor(X, requires_grad=True)
+        y_t = torch.tensor(y, requires_grad=True)
+        w_t = torch.tensor(w, requires_grad=True)
+        pred = torch.matmul(X_t, w_t)
+        return (pred - y_t).abs().mean(), [w_t, X_t, y_t]
+
+    compare_tensor_ops(fn_arr, fn_t, name="linreg")
+
+
+def test_get_item_and_reshape():
+    def fn_arr():
+        X_ar = Array(X, requires_grad=True)
+        w_ar = Array(w.reshape(-1), requires_grad=True)
+
+        X_temp = X_ar[:, 1].reshape((-1, 1)) * w_ar
+        c = (1 + X_temp.abs()).log().sum()
+        return c, [w_ar, X_ar]
+
+    def fn_t():
+        X_t = torch.tensor(X, requires_grad=True)
+        w_t = torch.tensor(w.reshape(-1), requires_grad=True)
+
+        X_temp = X_t[:, 1].reshape((-1, 1)) * w_t
+        c = (1 + X_temp.abs()).log().sum()
+        return c, [w_t, X_t]
+
+    compare_tensor_ops(fn_arr, fn_t, name="linreg")
+
+@pytest.mark.parametrize("array", [
+    np.array([1, 2, 3, 4, 5, 6]).astype(np.float32),
+    np.array([1, 1, 1, 1, 1]).astype(np.float32),
+    np.array([1, 2, 2, 1]).astype(np.float32),
+    np.array([
+        1, 2,
+        3, 2
+    ]).astype(np.float32),
+
+])
+def test_max_min(array):
+    def fn_arr():
+        a_ar = Array(array, requires_grad=True)
+        c_ar = a_ar.max() - a_ar.min()
+        return c_ar, [a_ar]
+
+    def fn_t():
+        a_t = torch.tensor(array, requires_grad=True)
+        c_t = a_t.max() - a_t.min()
+        return c_t, [a_t]
+
+    compare_tensor_ops(fn_arr, fn_t, name="max_min")
+

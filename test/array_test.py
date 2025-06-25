@@ -89,8 +89,10 @@ TEST_VALUES = [
 TEST_DTYPES = [
         (np.float16, np.float16, np.float16),
         (np.float16, np.float32, np.float32),
+        (np.float32, np.float16, np.float32),
         (np.float32, np.float32, np.float32),
         (np.float32, np.float64, np.float64),
+        (np.float64, np.float32, np.float64),
         (np.float64, np.float64, np.float64),
 ]
 
@@ -118,6 +120,12 @@ def test_add(a, b):
     ):
         assert isinstance(el, Array)
         assert np.allclose(el.data, a + b)
+
+
+@pytest.mark.parametrize("a, b", TEST_VALUES)
+def test_ndim(a, b):
+    assert Array(a).ndim == a.ndim
+    assert Array(b).ndim == b.ndim
 
 
 @pytest.mark.parametrize("a, b", TEST_VALUES)
@@ -360,3 +368,51 @@ def test_eq():
     assert all(a == b)
     assert any(c != b)
     assert any(a != 2)
+
+
+def test_transpose_without_copy():
+    a = Array(
+        [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ],
+        requires_grad=False,
+    )
+    def root_base(x):
+        base = x
+        while getattr(base, "base", None) is not None:
+            base = base.base
+        return base
+
+    b = a.transpose(copy=False)
+
+    assert root_base(a._value) is root_base(b._value)
+    assert root_base(a.data) is not root_base(b._value)
+
+
+def test_get_item_index_copy():
+    slic = np.array([1, 2, 0])
+
+    ar = Array([
+        1, 2, 4, 6, 8, 10
+    ], requires_grad=True)
+    new_ar = ar[slic]
+
+    new_ar.sum().backward(retain_graph=True)
+
+    grad = ar.grad
+
+    slic[-1] = 5
+
+    new_ar.sum().backward()
+
+    assert ar.grad[5] == 0
+    assert (ar.grad == 2 * grad).all()
+
+
+def test_backward_for_not_scalrs():
+    a = Array([1, 2, 3])
+    with pytest.raises(RuntimeError):
+        a.backward()
+
