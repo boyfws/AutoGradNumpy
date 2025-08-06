@@ -144,10 +144,10 @@ class Array(BaseArray):
         new_array = cast(npt.ArrayLike, value[key])  # type: ignore
         result_obj = type(self)(
             new_array,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
             dtype=self.dtype,
         )
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._grad_fn = getitem_backward(value, key)
             result_obj._prev_1 = self
 
@@ -169,7 +169,7 @@ class Array(BaseArray):
             else:
                 self._grad += prev_grad
 
-        if self._grad_fn is not None and self.requires_grad:
+        if self._grad_fn is not None:
 
             if isinstance(self._grad_fn, EmptyCallable):
                 raise RuntimeError(
@@ -253,11 +253,11 @@ class Array(BaseArray):
         array_flag = isinstance(other, BaseArray)
 
         value = self._value
-        req_grad = self.requires_grad
+        flag = self.requires_grad or not self.is_leaf
 
         if array_flag:
             sec = other._value  # type: ignore[reportPrivateUsage]
-            req_grad = req_grad or other.requires_grad
+            flag = flag or other.requires_grad or not other.is_leaf
         else:
             if isinstance(other, np.ndarray):
                 sec = other.copy()
@@ -269,10 +269,10 @@ class Array(BaseArray):
         result_dtype = self._promote_type(value, sec)
         result_obj = type(self)(
             result,
-            requires_grad=req_grad,
+            requires_grad=False,
             dtype=result_dtype,
         )
-        if req_grad:
+        if flag:
             fn = fn_getter(value, sec, result_obj._value)  # type: ignore[reportPrivateUsage]
             result_obj._grad_fn = fn
 
@@ -285,10 +285,10 @@ class Array(BaseArray):
     def __neg__(self) -> "BaseArray":
         result_obj = type(self)(
             -self._value,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
             dtype=self.dtype,
         )
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._grad_fn = neg_backward()
             result_obj._prev_1 = self
 
@@ -380,10 +380,10 @@ class Array(BaseArray):
         result_obj = type(self)(
             result,
             dtype=self.dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
 
             grad = sum_backward(
@@ -399,10 +399,10 @@ class Array(BaseArray):
         value = self._value
         result_obj = type(self)(
             np.abs(value),
-            requires_grad=self.requires_grad,
+            requires_grad=False,
             dtype=self.dtype,
         )
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._grad_fn = abs_backward(value)
             result_obj._prev_1 = self
 
@@ -426,11 +426,11 @@ class Array(BaseArray):
         result_obj = type(self)(
             self._value.transpose(axes),
             dtype=self._dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
             _copy=copy,
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
             result_obj._grad_fn = transpose_backward(axes)
 
@@ -444,10 +444,10 @@ class Array(BaseArray):
         result_obj = type(self)(
             self._value.reshape(shape),
             dtype=self._dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
             result_obj._grad_fn = reshape_backward(self._value.shape)
 
@@ -457,10 +457,10 @@ class Array(BaseArray):
         result_obj = type(self)(
             np.log(self._value),
             dtype=self._dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
             result_obj._grad_fn = log_backward(self._value)
 
@@ -470,10 +470,10 @@ class Array(BaseArray):
         result_obj = type(self)(
             np.exp(self._value),
             dtype=self._dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
             result_obj._grad_fn = exp_backward(result_obj._value)  # type: ignore[reportPrivateUsage]
 
@@ -483,10 +483,10 @@ class Array(BaseArray):
         result_obj = type(self)(
             np.prod(self._value, axis=axis),
             dtype=self._dtype,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
         )
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._prev_1 = self
             result_obj._grad_fn = prod_backward(self._value, result_obj._value, axis)  # type: ignore[reportPrivateUsage]
 
@@ -509,7 +509,7 @@ class Array(BaseArray):
 
         result_obj = type(self)(
             result_value,
-            requires_grad=self.requires_grad,
+            requires_grad=False,
             dtype=self.dtype,
         )
 
@@ -524,7 +524,7 @@ class Array(BaseArray):
             sums = mask.sum(axis=axis).reshape(*idx)
             mask = (mask / sums).astype(np.float32)
 
-        if self.requires_grad:
+        if self.requires_grad or not self.is_leaf:
             result_obj._grad_fn = max_min_backward(
                 mask,
                 axis,
